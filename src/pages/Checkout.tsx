@@ -103,13 +103,16 @@ export default function Checkout() {
         notes: formData.notes,
       });
 
-      // Add order items
+      // Add order items - handle both old and new cart item structures
       for (const item of items) {
+        const productId = item.product?.id || item.id;
+        const productPrice = item.product?.price || item.price;
+
         await orderItemService.addItem(
           order.id,
-          item.id,
+          productId as number,
           item.quantity,
-          item.price
+          productPrice
         );
       }
 
