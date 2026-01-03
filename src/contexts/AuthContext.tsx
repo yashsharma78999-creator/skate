@@ -35,17 +35,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
+    const timeoutId = setTimeout(() => {
+      console.warn("Auth check timeout - moving forward");
+      setIsLoading(false);
+    }, 5000); // 5 second timeout
+
     try {
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
 
+      clearTimeout(timeoutId);
+
       if (authUser) {
-        const profile = await profileService.getById(authUser.id);
-        setUser({
-          ...profile,
-          email: authUser.email || profile.email,
-        });
+        try {
+          const profile = await profileService.getById(authUser.id);
+          setUser({
+            ...profile,
+            email: authUser.email || profile.email,
+          });
+        } catch (profileError) {
+          console.error("Profile fetch error:", profileError);
+          setUser(null);
+        }
       } else {
         setUser(null);
       }
@@ -53,6 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Auth check error:", error);
       setUser(null);
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   }, []);
