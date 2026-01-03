@@ -24,6 +24,14 @@ export default function AdminLogin() {
     checkConnection();
   }, []);
 
+  // Auto-redirect when user becomes admin
+  useEffect(() => {
+    if (user && isAdmin && !isLoading) {
+      console.log("[AdminLogin] User is admin, redirecting to dashboard");
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [user, isAdmin, isLoading, navigate]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -33,12 +41,6 @@ export default function AdminLogin() {
         </div>
       </div>
     );
-  }
-
-  // Auto-redirect when user becomes admin
-  if (user && isAdmin) {
-    navigate("/admin/dashboard", { replace: true });
-    return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
