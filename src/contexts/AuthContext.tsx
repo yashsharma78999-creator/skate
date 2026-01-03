@@ -100,7 +100,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         try {
           console.log("[AUTH] Fetching profile for user:", session.user.id);
-          const profile = await profileService.getById(session.user.id);
+
+          // Add timeout to profile fetch (3 seconds)
+          const profilePromise = profileService.getById(session.user.id);
+          const profileTimeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Profile fetch timeout")), 3000)
+          );
+
+          const profile = await Promise.race([profilePromise, profileTimeoutPromise]);
+
           console.log("[AUTH] Profile loaded:", profile);
           setUser({
             ...profile,
