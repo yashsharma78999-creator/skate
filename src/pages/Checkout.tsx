@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { items, total, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -27,6 +27,22 @@ export default function Checkout() {
     zipcode: "",
     notes: "",
   });
+
+  // Show loading while authentication is being checked
+  if (isAuthLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-12 px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center py-12">
+              <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600 mx-auto" />
+              <p className="text-gray-600">Loading checkout...</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
