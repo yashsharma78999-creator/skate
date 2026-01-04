@@ -111,12 +111,7 @@ const CartDrawer = () => {
                 className="w-full"
                 size="lg"
                 disabled={isCheckingOut}
-                onClick={() => {
-                  setIsCheckingOut(true);
-                  setTimeout(() => {
-                    setIsCheckingOut(false);
-                  }, 2000);
-                }}
+                onClick={handleProceedCheckout}
               >
                 {isCheckingOut ? (
                   <>
