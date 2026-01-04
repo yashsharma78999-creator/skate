@@ -140,38 +140,49 @@ const Store = () => {
 
           {/* Products Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {sortedProducts.map((product) => (
-              <Link
-                key={product.id}
-                to={`/product/${product.id}`}
-                className="group bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-              >
-                <div className="aspect-square overflow-hidden bg-muted">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-4">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                    {product.category}
-                  </span>
-                  <h3 className="font-semibold text-card-foreground mt-1 group-hover:text-accent transition-colors">
-                    {product.name}
-                  </h3>
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-lg font-bold text-foreground">
-                      ${product.price}
+            {isLoading ? (
+              <div className="col-span-full text-center py-12">
+                <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary mx-auto" />
+                <p className="text-muted-foreground">Loading products...</p>
+              </div>
+            ) : sortedProducts.length > 0 ? (
+              sortedProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  to={`/product/${product.id}`}
+                  className="group bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className="aspect-square overflow-hidden bg-muted">
+                    <img
+                      src={product.image_url || ""}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                      {product.category}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-accent text-accent" />
-                      <span className="text-sm text-muted-foreground">{product.rating}</span>
+                    <h3 className="font-semibold text-card-foreground mt-1 group-hover:text-accent transition-colors">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-lg font-bold text-foreground">
+                        ₹{product.price.toFixed(2)}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-accent text-accent" />
+                        <span className="text-sm text-muted-foreground">4.7</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No products found in this category</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
