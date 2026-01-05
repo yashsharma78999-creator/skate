@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
+import ScrollToTop from "@/components/ScrollToTop";
 import { migrationService } from "@/services/migrations";
 import Index from "./pages/Index";
 import Store from "./pages/Store";
