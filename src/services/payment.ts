@@ -33,9 +33,11 @@ const generateHash = async (
   amount: number,
   productinfo: string,
   firstname: string,
-  email: string
+  email: string,
+  merchantKey: string,
+  merchantSalt: string
 ): Promise<string> => {
-  const str = `${PAYU_KEY}|${txnid}|${amount}|${productinfo}|${firstname}|${email}|||||||||||${PAYU_SALT}`;
+  const str = `${merchantKey}|${txnid}|${amount}|${productinfo}|${firstname}|${email}|||||||||||${merchantSalt}`;
 
   // Using Web Crypto API for SHA512
   const encoder = new TextEncoder();
