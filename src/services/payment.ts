@@ -52,6 +52,47 @@ const generateHash = async (
 export const paymentService = {
   async initiatePayment(request: PaymentRequest): Promise<PaymentResponse> {
     try {
+      // Fetch payment option from database
+      let paymentOption;
+      try {
+        paymentOption = await paymentOptionsService.getByProvider(
+          request.paymentMethod as any
+        );
+      } catch (error) {
+        console.warn(
+          "Payment option not found in database, using defaults:",
+          error
+        );
+        // If payment option is not found, use defaults (for backward compatibility)
+        paymentOption = null;
+      }
+
+      // Determine merchant credentials based on payment method
+      let merchantKey: string;
+      let merchantSalt: string;
+      let baseUrl: string;
+
+      if (request.paymentMethod === "payu" && paymentOption) {
+        merchantKey = paymentOption.merchant_key;
+        merchantSalt = paymentOption.merchant_salt || DEFAULT_PAYU_SALT;
+        baseUrl = DEFAULT_PAYU_BASE_URL;
+      } else if (request.paymentMethod === "paypal" && paymentOption) {
+        // PayPal integration placeholder
+        merchantKey = paymentOption.api_key || "";
+        merchantSalt = paymentOption.api_secret || "";
+        baseUrl = "https://www.paypal.com/cgi-bin/webscr";
+      } else if (request.paymentMethod === "paytm" && paymentOption) {
+        // Paytm integration placeholder
+        merchantKey = paymentOption.merchant_key;
+        merchantSalt = paymentOption.merchant_salt || "";
+        baseUrl = "https://securegw.paytm.in/theia/api/v1/initiateTransaction";
+      } else {
+        // Fallback to default PayU if no payment option is configured
+        merchantKey = DEFAULT_PAYU_KEY;
+        merchantSalt = DEFAULT_PAYU_SALT;
+        baseUrl = DEFAULT_PAYU_BASE_URL;
+      }
+
       // Generate transaction ID
       const txnid = `TXN_${request.orderId}_${Date.now()}`;
 
@@ -61,12 +102,14 @@ export const paymentService = {
         request.amount,
         `Order #${request.orderId}`,
         request.fullName,
-        request.email
+        request.email,
+        merchantKey,
+        merchantSalt
       );
 
       // Prepare form data for PayU
       const payuFormData = {
-        key: PAYU_KEY,
+        key: merchantKey,
         txnid: txnid,
         amount: request.amount.toString(),
         productinfo: `Order #${request.orderId}`,
@@ -102,7 +145,8 @@ export const paymentService = {
         data: {
           txnid: txnid,
           payuFormData: payuFormData,
-          payuUrl: `${PAYU_BASE_URL}/_payment`,
+          payuUrl: `${baseUrl}/_payment`,
+          provider: request.paymentMethod,
         },
       };
     } catch (error) {
