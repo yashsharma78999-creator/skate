@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   X,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -36,6 +37,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       label: "Inventory",
       icon: Package,
       href: "/admin/inventory",
+    },
+    {
+      label: "Payment Options",
+      icon: CreditCard,
+      href: "/admin/payment-options",
     },
     {
       label: "Memberships",

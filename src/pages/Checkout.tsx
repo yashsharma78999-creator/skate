@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Layout from "@/components/Layout";
-import { orderService, orderItemService } from "@/services/database";
+import { orderService, orderItemService, paymentOptionsService } from "@/services/database";
 import { paymentService } from "@/services/payment";
+import { PaymentOption } from "@/types/database";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +17,8 @@ export default function Checkout() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { items, total, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentOption[]>([]);
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(true);
 
   const [formData, setFormData] = useState({
     fullName: user?.full_name || "",
@@ -26,7 +29,32 @@ export default function Checkout() {
     state: "",
     zipcode: "",
     notes: "",
+    paymentMethod: "payu",
   });
+
+  useEffect(() => {
+    loadPaymentMethods();
+  }, []);
+
+  const loadPaymentMethods = async () => {
+    try {
+      setIsLoadingPaymentMethods(true);
+      const methods = await paymentOptionsService.getEnabled();
+      setPaymentMethods(methods);
+      // Set the first enabled payment method as default if available
+      if (methods.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          paymentMethod: methods[0].provider,
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading payment methods:", error);
+      toast.error("Failed to load payment methods");
+    } finally {
+      setIsLoadingPaymentMethods(false);
+    }
+  };
 
   // Show loading while authentication is being checked
   if (isAuthLoading) {
@@ -99,6 +127,13 @@ export default function Checkout() {
         return;
       }
 
+      // Validate that a payment method is selected
+      if (!formData.paymentMethod || paymentMethods.length === 0) {
+        toast.error("No payment methods available. Please contact support.");
+        setIsProcessing(false);
+        return;
+      }
+
       // Create order
       const orderNumber = `ORD-${Date.now()}`;
       const order = await orderService.create({
@@ -106,7 +141,7 @@ export default function Checkout() {
         order_number: orderNumber,
         status: "pending",
         total_amount: total,
-        payment_method: "payu",
+        payment_method: formData.paymentMethod,
         payment_status: "pending",
         shipping_address: {
           name: formData.fullName,
@@ -286,10 +321,49 @@ export default function Checkout() {
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Payment Method *
+                      </label>
+                      {isLoadingPaymentMethods ? (
+                        <div className="flex items-center justify-center py-6">
+                          <div className="text-center">
+                            <div className="inline-block mb-2 h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                            <p className="text-sm text-gray-600">Loading payment methods...</p>
+                          </div>
+                        </div>
+                      ) : paymentMethods.length === 0 ? (
+                        <div className="px-3 py-2 border border-red-300 rounded-md bg-red-50">
+                          <p className="text-sm text-red-700">
+                            No payment methods available. Please contact support.
+                          </p>
+                        </div>
+                      ) : (
+                        <select
+                          value={formData.paymentMethod}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              paymentMethod: e.target.value,
+                            })
+                          }
+                          disabled={isProcessing || paymentMethods.length === 0}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                          required
+                        >
+                          {paymentMethods.map((method) => (
+                            <option key={method.id} value={method.provider}>
+                              {method.provider.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
                     <Button
                       type="submit"
                       className="w-full"
-                      disabled={isProcessing}
+                      disabled={isProcessing || paymentMethods.length === 0}
                     >
                       {isProcessing ? "Processing..." : "Continue to Payment"}
                     </Button>

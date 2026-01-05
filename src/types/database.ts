@@ -78,3 +78,17 @@ export interface InventoryLog {
   created_by: string | null;
   created_at: string;
 }
+
+export interface PaymentOption {
+  id: number;
+  provider: "payu" | "paypal" | "paytm";
+  is_enabled: boolean;
+  merchant_key: string;
+  merchant_salt: string | null;
+  api_key: string | null;
+  api_secret: string | null;
+  webhook_secret: string | null;
+  additional_config: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}

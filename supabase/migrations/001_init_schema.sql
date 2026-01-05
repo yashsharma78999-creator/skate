@@ -280,3 +280,55 @@ CREATE POLICY "Users can view their payment transactions" ON public.payment_tran
       AND orders.user_id = auth.uid()
     )
   );
+
+-- Create payment options table for managing payment methods
+CREATE TABLE public.payment_options (
+  id BIGSERIAL PRIMARY KEY,
+  provider TEXT NOT NULL CHECK (provider IN ('payu', 'paypal', 'paytm')),
+  is_enabled BOOLEAN DEFAULT true,
+  merchant_key TEXT NOT NULL,
+  merchant_salt TEXT,
+  api_key TEXT,
+  api_secret TEXT,
+  webhook_secret TEXT,
+  additional_config JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE(provider)
+);
+
+CREATE INDEX idx_payment_options_provider ON public.payment_options(provider);
+CREATE INDEX idx_payment_options_enabled ON public.payment_options(is_enabled);
+
+-- Enable RLS for payment_options
+ALTER TABLE public.payment_options ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for payment_options
+CREATE POLICY "Only admin can view payment options" ON public.payment_options
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+CREATE POLICY "Only admin can manage payment options" ON public.payment_options
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+CREATE POLICY "Only admin can update payment options" ON public.payment_options
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+CREATE POLICY "Only admin can delete payment options" ON public.payment_options
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
