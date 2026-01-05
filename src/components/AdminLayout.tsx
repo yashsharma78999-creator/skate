@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   X,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 
