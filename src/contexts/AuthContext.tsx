@@ -10,7 +10,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { profileService } from "@/services/database";
 import { Profile } from "@/types/database";
-import { useNavigate } from "react-router-dom";
 
 export interface User extends Profile {
   email: string;
