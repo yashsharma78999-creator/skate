@@ -141,15 +141,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const profile = await fetchProfileWithTimeout(session.user.id, 8000);
 
           console.log("[AUTH] Profile loaded:", profile);
-          setUser({
+          const newUser = {
             ...profile,
             email: session.user.email || profile.email,
-          });
+          };
+          setUser(newUser);
+
+          // Start inactivity timer for admins
+          if (newUser.role === "admin") {
+            resetInactivityTimer();
+          }
         } catch (error) {
           console.error("[AUTH] Error fetching profile:", error);
           console.log("[AUTH] Using fallback user object");
           // Fallback: create a minimal user object if profile fetch fails
-          setUser({
+          const fallbackUser = {
             id: session.user.id,
             email: session.user.email || "",
             role: "customer",
@@ -157,17 +163,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             avatar_url: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          });
+          };
+          setUser(fallbackUser);
+
+          // Start inactivity timer for admins
+          if (fallbackUser.role === "admin") {
+            resetInactivityTimer();
+          }
         }
       } else {
         setUser(null);
+        // Clear timers on logout
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       }
     });
 
     return () => {
       subscription?.unsubscribe();
+      // Clear timers on unmount
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     };
-  }, [checkAuth, fetchProfileWithTimeout]);
+  }, [checkAuth, fetchProfileWithTimeout, resetInactivityTimer]);
 
   const login = async (email: string, password: string) => {
     console.log("[AUTH] Login attempt with email:", email);
