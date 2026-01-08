@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user?.role, resetInactivityTimer]);
 
-  const fetchProfileWithTimeout = useCallback(async (userId: string, timeoutMs = 8000) => {
+  const fetchProfileWithTimeout = useCallback(async (userId: string, timeoutMs = 15000) => {
     try {
       const profilePromise = profileService.getById(userId);
       const timeoutPromise = new Promise<never>((_, reject) =>
