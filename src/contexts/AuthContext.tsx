@@ -164,8 +164,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             resetInactivityTimer();
           }
         } catch (error) {
-          console.error("[AUTH] Error fetching profile:", error);
-          console.log("[AUTH] Using fallback user object");
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn("[AUTH] Error fetching profile (using fallback):", errorMsg);
           // Fallback: create a minimal user object if profile fetch fails
           const fallbackUser = {
             id: session.user.id,
