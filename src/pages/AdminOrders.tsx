@@ -318,6 +318,21 @@ export default function AdminOrders() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                  <div>
+                    <p className="text-xs text-gray-600">Customer Email</p>
+                    <p className="font-medium text-sm">
+                      {selectedOrder.customer_email || (selectedOrder.shipping_address?.email || 'N/A')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Customer Phone</p>
+                    <p className="font-medium text-sm">
+                      {selectedOrder.customer_phone || (selectedOrder.shipping_address?.phone || 'N/A')}
+                    </p>
+                  </div>
+                </div>
+
                 <div>
                   <h3 className="font-semibold mb-3">Items</h3>
                   <div className="space-y-2">
