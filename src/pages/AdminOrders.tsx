@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/select";
 import { orderService } from "@/services/database";
 import { Order } from "@/types/database";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, FileText, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { receiptService, ReceiptData } from "@/services/receipt";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -21,6 +22,9 @@ export default function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [statusComment, setStatusComment] = useState("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -59,25 +63,34 @@ export default function AdminOrders() {
     setFilteredOrders(filtered);
   };
 
-  const updateOrderStatus = async (orderId: number, newStatus: Order["status"]) => {
+  const updateOrderStatus = async (orderId: number, newStatus: Order["status"], comment?: string) => {
     try {
-      await orderService.updateStatus(orderId, newStatus);
+      setIsUpdatingStatus(true);
+      await orderService.update(orderId, {
+        status: newStatus,
+        status_comment: comment || null,
+      });
       toast.success("Order status updated successfully");
+      setStatusComment("");
       loadOrders();
     } catch (error) {
-      console.error("Error updating order:", error);
-      toast.error("Failed to update order status");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Error updating order:", errorMessage, error);
+      toast.error(`Failed to update order status: ${errorMessage}`);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
   const exportOrders = () => {
     try {
       const csv = [
-        ["Order #", "Date", "Customer", "Amount", "Status", "Payment Status"],
+        ["Order #", "Date", "Customer Email", "Customer Phone", "Amount", "Status", "Payment Status"],
         ...filteredOrders.map((order) => [
           order.order_number,
           new Date(order.created_at).toLocaleDateString(),
-          order.user_id || "Guest",
+          order.customer_email || "N/A",
+          order.customer_phone || "N/A",
           order.total_amount,
           order.status,
           order.payment_status,
@@ -123,6 +136,62 @@ export default function AdminOrders() {
       refunded: "bg-orange-100 text-orange-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  const generateReceiptData = (order: any): ReceiptData => {
+    const shippingAddress = order.shipping_address || {};
+    return {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      orderDate: order.created_at,
+      customerName: shippingAddress.name || "N/A",
+      customerEmail: order.customer_email || shippingAddress.email || "N/A",
+      customerPhone: order.customer_phone || shippingAddress.phone || "N/A",
+      items: (order.order_items || []).map((item: any) => ({
+        name: item.products?.name || "Product",
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal: order.total_amount,
+      shipping: 0,
+      total: order.total_amount,
+      status: order.status,
+      paymentStatus: order.payment_status,
+      shippingAddress: {
+        address: shippingAddress.address || "",
+        city: shippingAddress.city || "",
+        state: shippingAddress.state || "",
+        zip: shippingAddress.zip || "",
+      },
+    };
+  };
+
+  const handleDownloadReceipt = async (order: any) => {
+    try {
+      setIsGeneratingReceipt(true);
+      const receiptData = generateReceiptData(order);
+      await receiptService.generateAndDownloadPDF(receiptData);
+      toast.success("Receipt downloaded successfully");
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Failed to download receipt");
+    } finally {
+      setIsGeneratingReceipt(false);
+    }
+  };
+
+  const handlePrintReceipt = async (order: any) => {
+    try {
+      setIsGeneratingReceipt(true);
+      const receiptData = generateReceiptData(order);
+      await receiptService.printReceipt(receiptData);
+      toast.success("Receipt opened for printing");
+    } catch (error) {
+      console.error("Error printing receipt:", error);
+      toast.error("Failed to print receipt");
+    } finally {
+      setIsGeneratingReceipt(false);
+    }
   };
 
   return (
@@ -292,15 +361,35 @@ export default function AdminOrders() {
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
             onClick={() => setSelectedOrder(null)}
           >
-            <Card className="w-full max-w-2xl max-h-96 overflow-y-auto">
-              <CardHeader className="flex items-center justify-between">
+            <Card className="w-full max-w-2xl max-h-96 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <CardHeader className="flex items-center justify-between border-b">
                 <CardTitle>Order #{selectedOrder.order_number}</CardTitle>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="text-gray-600 hover:text-gray-900"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadReceipt(selectedOrder)}
+                    disabled={isGeneratingReceipt}
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePrintReceipt(selectedOrder)}
+                    disabled={isGeneratingReceipt}
+                  >
+                    <Printer className="w-4 h-4 mr-1" />
+                    Print
+                  </Button>
+                  <button
+                    onClick={() => setSelectedOrder(null)}
+                    className="text-gray-600 hover:text-gray-900"
+                  >
+                    ✕
+                  </button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -314,6 +403,21 @@ export default function AdminOrders() {
                     <p className="text-xs text-gray-600">Total Amount</p>
                     <p className="font-medium text-lg">
                       ₹{selectedOrder.total_amount.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                  <div>
+                    <p className="text-xs text-gray-600">Customer Email</p>
+                    <p className="font-medium text-sm">
+                      {selectedOrder.customer_email || (selectedOrder.shipping_address?.email || 'N/A')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Customer Phone</p>
+                    <p className="font-medium text-sm">
+                      {selectedOrder.customer_phone || (selectedOrder.shipping_address?.phone || 'N/A')}
                     </p>
                   </div>
                 </div>
@@ -355,6 +459,70 @@ export default function AdminOrders() {
                     </p>
                   </div>
                 )}
+
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-3">Update Order Status</h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">New Status</label>
+                      <Select
+                        value={selectedOrder.status}
+                        onValueChange={(value) => {
+                          setSelectedOrder({ ...selectedOrder, status: value });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="shipped">Shipped</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Status Comment/Description</label>
+                      <textarea
+                        value={statusComment}
+                        onChange={(e) => setStatusComment(e.target.value)}
+                        placeholder="Add a comment about the status change (optional)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        rows={3}
+                      />
+                      {selectedOrder.status_comment && (
+                        <p className="text-xs text-gray-600 mt-2">
+                          <strong>Previous comment:</strong> {selectedOrder.status_comment}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() =>
+                          updateOrderStatus(
+                            selectedOrder.id,
+                            selectedOrder.status as Order["status"],
+                            statusComment
+                          )
+                        }
+                        disabled={isUpdatingStatus}
+                        className="flex-1"
+                      >
+                        {isUpdatingStatus ? "Updating..." : "Update Status"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedOrder(null)}
+                        className="flex-1"
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

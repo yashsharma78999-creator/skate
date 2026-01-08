@@ -333,6 +333,13 @@ export default function Orders() {
                   <p className="text-sm text-gray-600">{selectedOrder.notes}</p>
                 </div>
               )}
+
+              {selectedOrder.status_comment && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h3 className="font-semibold mb-2 text-sm text-blue-900">Order Status Update</h3>
+                  <p className="text-sm text-blue-800">{selectedOrder.status_comment}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

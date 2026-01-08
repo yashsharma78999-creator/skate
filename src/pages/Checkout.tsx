@@ -152,6 +152,8 @@ export default function Checkout() {
           phone: formData.phone,
         },
         notes: formData.notes,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
       });
 
       // Add order items - handle both old and new cart item structures

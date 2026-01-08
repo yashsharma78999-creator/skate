@@ -5,6 +5,7 @@ import {
   useEffect,
   ReactNode,
   useCallback,
+  useRef,
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { profileService } from "@/services/database";
@@ -30,11 +31,47 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Session timeout configuration (30 minutes of inactivity)
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const SESSION_WARNING_MS = 25 * 60 * 1000;
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchProfileWithTimeout = useCallback(async (userId: string, timeoutMs = 8000) => {
+  const resetInactivityTimer = useCallback(() => {
+    // Clear existing timers
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+    }
+
+    // Set warning timer (show warning 5 minutes before logout)
+    warningTimerRef.current = setTimeout(() => {
+      console.log("[AUTH] Session about to expire due to inactivity");
+      // You can add a toast notification here if needed
+    }, SESSION_WARNING_MS);
+
+    // Set logout timer
+    inactivityTimerRef.current = setTimeout(async () => {
+      console.log("[AUTH] Logging out due to inactivity");
+      await supabase.auth.signOut();
+      setUser(null);
+    }, SESSION_TIMEOUT_MS);
+  }, []);
+
+  const handleUserActivity = useCallback(() => {
+    // Reset timer on any user activity (only for admins)
+    if (user?.role === "admin") {
+      resetInactivityTimer();
+    }
+  }, [user?.role, resetInactivityTimer]);
+
+  const fetchProfileWithTimeout = useCallback(async (userId: string, timeoutMs = 15000) => {
     try {
       const profilePromise = profileService.getById(userId);
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -57,18 +94,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authUser) {
         try {
           console.log("[AUTH] Fetching profile for user:", authUser.id);
-          const profile = await fetchProfileWithTimeout(authUser.id, 8000);
+          const profile = await fetchProfileWithTimeout(authUser.id, 15000);
 
           console.log("[AUTH] Profile loaded successfully");
-          setUser({
+          const newUser = {
             ...profile,
             email: authUser.email || profile.email,
-          });
+          };
+          setUser(newUser);
+
+          // Start inactivity timer for admins on page load
+          if (newUser.role === "admin") {
+            resetInactivityTimer();
+          }
         } catch (profileError) {
-          console.error("[AUTH] Profile fetch error:", profileError);
-          console.log("[AUTH] Using fallback user object due to profile fetch failure");
+          const errorMsg = profileError instanceof Error ? profileError.message : String(profileError);
+          console.warn("[AUTH] Profile fetch error (using fallback):", errorMsg);
           // Fallback: create a minimal user object if profile fetch fails
-          setUser({
+          const fallbackUser = {
             id: authUser.id,
             email: authUser.email || "",
             role: "customer",
@@ -76,18 +119,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             avatar_url: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          });
+          };
+          setUser(fallbackUser);
+
+          // Start inactivity timer for admins
+          if (fallbackUser.role === "admin") {
+            resetInactivityTimer();
+          }
         }
       } else {
         setUser(null);
       }
     } catch (error) {
-      console.error("[AUTH] Auth check error:", error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("[AUTH] Auth check error:", errorMsg);
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfileWithTimeout]);
+  }, [fetchProfileWithTimeout, resetInactivityTimer]);
 
   useEffect(() => {
     checkAuth();
@@ -100,18 +150,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         try {
           console.log("[AUTH] Fetching profile for user:", session.user.id);
-          const profile = await fetchProfileWithTimeout(session.user.id, 8000);
+          const profile = await fetchProfileWithTimeout(session.user.id, 15000);
 
           console.log("[AUTH] Profile loaded:", profile);
-          setUser({
+          const newUser = {
             ...profile,
             email: session.user.email || profile.email,
-          });
+          };
+          setUser(newUser);
+
+          // Start inactivity timer for admins
+          if (newUser.role === "admin") {
+            resetInactivityTimer();
+          }
         } catch (error) {
-          console.error("[AUTH] Error fetching profile:", error);
-          console.log("[AUTH] Using fallback user object");
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn("[AUTH] Error fetching profile (using fallback):", errorMsg);
           // Fallback: create a minimal user object if profile fetch fails
-          setUser({
+          const fallbackUser = {
             id: session.user.id,
             email: session.user.email || "",
             role: "customer",
@@ -119,17 +175,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             avatar_url: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          });
+          };
+          setUser(fallbackUser);
+
+          // Start inactivity timer for admins
+          if (fallbackUser.role === "admin") {
+            resetInactivityTimer();
+          }
         }
       } else {
         setUser(null);
+        // Clear timers on logout
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       }
     });
 
     return () => {
       subscription?.unsubscribe();
+      // Clear timers on unmount
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     };
-  }, [checkAuth, fetchProfileWithTimeout]);
+  }, [checkAuth, fetchProfileWithTimeout, resetInactivityTimer]);
 
   const login = async (email: string, password: string) => {
     console.log("[AUTH] Login attempt with email:", email);
@@ -151,7 +219,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user) {
         try {
           console.log("[AUTH] Fetching profile for user:", data.user.id);
-          const profile = await fetchProfileWithTimeout(data.user.id, 8000);
+          const profile = await fetchProfileWithTimeout(data.user.id, 15000);
 
           console.log("[AUTH] Profile fetched:", profile);
           setUser({
@@ -159,9 +227,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: data.user.email || profile.email,
           });
         } catch (profileError) {
-          console.error("[AUTH] Profile fetch error:", profileError);
+          const errorMsg = profileError instanceof Error ? profileError.message : String(profileError);
+          console.warn("[AUTH] Profile fetch error (using fallback):", errorMsg);
           // Even if profile fetch fails, user is authenticated - allow login to proceed
-          console.log("[AUTH] Using fallback user object");
           setUser({
             id: data.user.id,
             email: data.user.email || email,
@@ -224,7 +292,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const profile = await Promise.race([
             profilePromise,
             new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error("Profile creation timeout")), 8000)
+              setTimeout(() => reject(new Error("Profile creation timeout")), 15000)
             ),
           ]);
 
@@ -234,8 +302,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: data.user.email || email,
           });
         } catch (profileError) {
-          console.error("[AUTH] Profile creation error:", profileError);
-          console.log("[AUTH] Using fallback after profile creation failure");
+          const errorMsg = profileError instanceof Error ? profileError.message : String(profileError);
+          console.warn("[AUTH] Profile creation error (using fallback):", errorMsg);
           // Still set user even if profile creation fails
           setUser({
             id: data.user.id,
@@ -255,10 +323,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    // Clear timers on logout
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
   };
+
+  // Set up activity listeners for admins
+  useEffect(() => {
+    if (user?.role === "admin") {
+      // Listen for user activity
+      const events = ["mousedown", "keydown", "scroll", "touchstart"];
+
+      events.forEach((event) => {
+        document.addEventListener(event, handleUserActivity);
+      });
+
+      // Initial timer setup
+      resetInactivityTimer();
+
+      return () => {
+        events.forEach((event) => {
+          document.removeEventListener(event, handleUserActivity);
+        });
+        // Clear timers on unmount
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      };
+    }
+  }, [user?.role, handleUserActivity, resetInactivityTimer]);
 
   const isAdmin = user?.role === "admin";
 
