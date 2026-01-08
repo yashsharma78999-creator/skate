@@ -227,9 +227,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: data.user.email || profile.email,
           });
         } catch (profileError) {
-          console.error("[AUTH] Profile fetch error:", profileError);
+          const errorMsg = profileError instanceof Error ? profileError.message : String(profileError);
+          console.warn("[AUTH] Profile fetch error (using fallback):", errorMsg);
           // Even if profile fetch fails, user is authenticated - allow login to proceed
-          console.log("[AUTH] Using fallback user object");
           setUser({
             id: data.user.id,
             email: data.user.email || email,
