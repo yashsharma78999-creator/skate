@@ -311,10 +311,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    // Clear timers on logout
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
   };
+
+  // Set up activity listeners for admins
+  useEffect(() => {
+    if (user?.role === "admin") {
+      // Listen for user activity
+      const events = ["mousedown", "keydown", "scroll", "touchstart"];
+
+      events.forEach((event) => {
+        document.addEventListener(event, handleUserActivity);
+      });
+
+      // Initial timer setup
+      resetInactivityTimer();
+
+      return () => {
+        events.forEach((event) => {
+          document.removeEventListener(event, handleUserActivity);
+        });
+        // Clear timers on unmount
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      };
+    }
+  }, [user?.role, handleUserActivity, resetInactivityTimer]);
 
   const isAdmin = user?.role === "admin";
 
