@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: ":jpskating.onrender.com:",
+    host: "::",
     port: 8080,
   },
   plugins: [react(), mode === "production" && componentTagger()].filter(Boolean),
@@ -16,3 +16,10 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
+export default {
+  server: {
+    allowedHosts: [
+      'jpskating.onrender.com'
+    ]
+  }
+};
