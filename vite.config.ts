@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     allowedHosts: [".onrender.com"]  // Allows all Render subdomains
   },
-  plugins: [react(), mode === "production" && componentTagger()].filter(Boolean),
+  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
