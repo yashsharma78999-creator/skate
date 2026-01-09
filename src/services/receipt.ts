@@ -94,7 +94,7 @@ export const receiptService = {
     }
   },
 
-  private generateReceiptHTML(data: ReceiptData): string {
+  generateReceiptHTML(data: ReceiptData): string {
     const itemsHTML = data.items
       .map(
         (item) => `
