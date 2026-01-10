@@ -100,26 +100,51 @@ const CartDrawer = () => {
                   </div>
                 </div>
               )}
-              {(updatedItems.length > 0 ? updatedItems : items).map((item) => (
+              {(updatedItems.length > 0 ? updatedItems : items).map((item) => {
+                const isMembership = item.product.category === 'Membership';
+                return (
                 <div
                   key={item.id}
-                  className="flex gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors duration-200 animate-in slide-in-from-right"
+                  className={`flex gap-3 p-3 rounded-lg hover:transition-colors duration-200 animate-in slide-in-from-right ${
+                    isMembership
+                      ? "bg-gradient-to-br from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border border-purple-200"
+                      : "bg-muted/50 hover:bg-muted"
+                  }`}
                 >
-                  <div className="w-20 h-20 bg-muted rounded-md overflow-hidden flex-shrink-0">
-                    <img
-                      src={item.product.image}
-                      alt={item.product.name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className={`w-20 h-20 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center ${
+                    isMembership
+                      ? "bg-gradient-to-br from-purple-200 to-blue-200"
+                      : "bg-muted"
+                  }`}>
+                    {isMembership ? (
+                      <Award className="w-10 h-10 text-white" />
+                    ) : (
+                      <img
+                        src={item.product.image}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-foreground text-sm truncate">
-                      {item.product.name}
-                    </h4>
+                    <div className="flex items-start gap-2">
+                      <h4 className="font-medium text-foreground text-sm truncate flex-1">
+                        {item.product.name}
+                      </h4>
+                      {isMembership && (
+                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-purple-200 text-purple-900 whitespace-nowrap">
+                          Membership
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {item.size && `Size: ${item.size}`}
-                      {item.size && item.color && ' • '}
-                      {item.color && `Color: ${item.color}`}
+                      {isMembership ? "Premium access included" : (
+                        <>
+                          {item.size && `Size: ${item.size}`}
+                          {item.size && item.color && ' • '}
+                          {item.color && `Color: ${item.color}`}
+                        </>
+                      )}
                     </p>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-0.5 bg-background border border-border rounded-lg overflow-hidden">
@@ -152,7 +177,8 @@ const CartDrawer = () => {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             <div className="border-t border-border pt-4 space-y-4">
