@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { paymentOptionsService } from "@/services/database";
+import { paymentOptionsService, userMembershipService, membershipService } from "@/services/database";
 
 // Default PayU Configuration - Fallback if no payment option is configured
 const DEFAULT_PAYU_KEY = import.meta.env.VITE_PAYU_KEY || "YOUR_PAYU_KEY";
