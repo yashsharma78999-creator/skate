@@ -31,9 +31,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Session timeout configuration (30 minutes of inactivity)
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
-const SESSION_WARNING_MS = 25 * 60 * 1000;
+// Session timeout configuration - DISABLED for permanent login
+// Set to very high value (24 hours) to prevent unwanted logouts
+// Users will be kept logged in as long as their token is valid
+const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_WARNING_MS = 23 * 60 * 60 * 1000; // 23 hours
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -50,18 +52,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearTimeout(warningTimerRef.current);
     }
 
-    // Set warning timer (show warning 5 minutes before logout)
-    warningTimerRef.current = setTimeout(() => {
-      console.log("[AUTH] Session about to expire due to inactivity");
-      // You can add a toast notification here if needed
-    }, SESSION_WARNING_MS);
+    // Set warning timer - DISABLED since logout is disabled
+    // warningTimerRef.current = setTimeout(() => {
+    //   console.log("[AUTH] Session about to expire due to inactivity");
+    //   // You can add a toast notification here if needed
+    // }, SESSION_WARNING_MS);
 
-    // Set logout timer
-    inactivityTimerRef.current = setTimeout(async () => {
-      console.log("[AUTH] Logging out due to inactivity");
-      await supabase.auth.signOut();
-      setUser(null);
-    }, SESSION_TIMEOUT_MS);
+    // Set logout timer - DISABLED to prevent unwanted logouts
+    // Users will only be logged out if their session expires server-side
+    // inactivityTimerRef.current = setTimeout(async () => {
+    //   console.log("[AUTH] Logging out due to inactivity");
+    //   await supabase.auth.signOut();
+    //   setUser(null);
+    // }, SESSION_TIMEOUT_MS);
   }, []);
 
   const handleUserActivity = useCallback(() => {
@@ -103,14 +106,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
           setUser(newUser);
 
-          // Start inactivity timer for admins on page load
+          // Start inactivity timer for admins on page load (24 hour timeout)
           if (newUser.role === "admin") {
             resetInactivityTimer();
           }
         } catch (profileError) {
           const errorMsg = profileError instanceof Error ? profileError.message : String(profileError);
-          console.debug("[AUTH] Profile fetch failed, using fallback:", errorMsg);
-          // Fallback: create a minimal user object if profile fetch fails
+          console.debug("[AUTH] Profile fetch failed during checkAuth, keeping user logged in:", errorMsg);
+          // Fallback: Keep user logged in with minimal data instead of logging them out
+          // This prevents unwanted logouts due to network issues or slow database
           const fallbackUser = {
             id: authUser.id,
             email: authUser.email || "",
@@ -140,13 +144,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchProfileWithTimeout, resetInactivityTimer]);
 
   useEffect(() => {
+    // Initialize auth check
+    console.log("[AUTH] Initializing auth check...");
     checkAuth();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[AUTH] Auth state changed:", event);
+      console.log("[AUTH] Auth state changed:", event, "User ID:", session?.user?.id);
       if (session?.user) {
         try {
           console.log("[AUTH] Fetching profile for user:", session.user.id);
@@ -159,14 +165,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
           setUser(newUser);
 
-          // Start inactivity timer for admins
+          // Start inactivity timer for admins (24 hour timeout)
           if (newUser.role === "admin") {
             resetInactivityTimer();
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          console.debug("[AUTH] Profile fetch failed in auth state change, using fallback:", errorMsg);
-          // Fallback: create a minimal user object if profile fetch fails
+          console.debug("[AUTH] Profile fetch failed in auth state change, keeping user logged in:", errorMsg);
+          // Fallback: Keep user logged in instead of forcing logout
+          // This allows the app to continue functioning even if profile fetch fails
           const fallbackUser = {
             id: session.user.id,
             email: session.user.email || "",

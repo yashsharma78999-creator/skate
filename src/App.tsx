@@ -25,6 +25,7 @@ import AdminPaymentOptions from "./pages/AdminPaymentOptions";
 import AdminMemberships from "./pages/AdminMemberships";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
+import UserProfile from "./pages/UserProfile";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/profile" element={<UserProfile />} />
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route

@@ -1,0 +1,320 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Layout from "@/components/Layout";
+import { userMembershipService, membershipService } from "@/services/database";
+import { Membership, UserMembership } from "@/types/database";
+import { LogOut, Edit2, Calendar, Award, Star, Crown, Flame, Zap, Gift, Trophy, Heart } from "lucide-react";
+import { toast } from "sonner";
+
+const iconMap: Record<string, any> = {
+  Star,
+  Crown,
+  Flame,
+  Zap,
+  Gift,
+  Trophy,
+  Heart,
+  Award,
+};
+
+const colorMap: Record<string, string> = {
+  silver: "#C0C0C0",
+  gold: "#FFD700",
+  platinum: "#E5E4E2",
+  blue: "#3B82F6",
+  purple: "#A855F7",
+  emerald: "#10B981",
+};
+
+export default function UserProfile() {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [memberships, setMemberships] = useState<(UserMembership & { membership: Membership | null })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadMemberships();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadMemberships = async () => {
+    try {
+      setIsLoading(true);
+      if (user?.id) {
+        const data = await userMembershipService.getByUserId(user.id);
+        setMemberships(data);
+      }
+    } catch (error) {
+      console.error("Error loading memberships:", error);
+      toast.error("Failed to load memberships");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/auth");
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast.error("Failed to logout");
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-12 px-4">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Sign in to view your profile
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Please log in to see your memberships and account details
+                </p>
+                <Button onClick={() => navigate("/auth")}>Sign In</Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-transparent py-12 px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Profile Header */}
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">My Profile</h1>
+                <p className="text-gray-600 mt-2">Manage your account and memberships</p>
+              </div>
+              <Button
+                onClick={handleLogout}
+                variant="destructive"
+                size="lg"
+                className="gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            </div>
+
+            {/* User Info Card */}
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Full Name</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {user?.full_name || "Not set"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Email Address</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Memberships Section */}
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900">My Memberships</h2>
+                <p className="text-gray-600 mt-2">Active and inactive memberships</p>
+              </div>
+              <Button
+                onClick={() => navigate("/programme")}
+                size="lg"
+              >
+                <Award className="w-4 h-4 mr-2" />
+                Browse Memberships
+              </Button>
+            </div>
+
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600 mx-auto" />
+                <p className="text-gray-600">Loading memberships...</p>
+              </div>
+            ) : memberships.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    No memberships yet
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Explore our membership tiers and get exclusive benefits
+                  </p>
+                  <Button
+                    onClick={() => navigate("/programme")}
+                    size="lg"
+                  >
+                    Explore Memberships
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {memberships.map((userMembership) => {
+                  const membership = userMembership.membership;
+                  if (!membership) return null;
+
+                  const IconComponent = iconMap[membership.icon || 'Star'] || Star;
+                  const color = colorMap[membership.color || 'silver'];
+                  const startDate = new Date(userMembership.start_date);
+                  const endDate = new Date(userMembership.end_date);
+                  const now = new Date();
+                  const isActive = userMembership.is_active && now <= endDate;
+                  const daysRemaining = Math.ceil(
+                    (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+                  );
+
+                  return (
+                    <div
+                      key={userMembership.id}
+                      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-300 group hover:shadow-xl ${
+                        isActive
+                          ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
+                          : "border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100"
+                      }`}
+                    >
+                      {/* Icon Background */}
+                      <div
+                        className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 group-hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                      />
+
+                      <div className="relative p-6">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-12 h-12 rounded-lg flex items-center justify-center"
+                              style={{ backgroundColor: color + "20" }}
+                            >
+                              <IconComponent
+                                className="w-7 h-7"
+                                style={{ color }}
+                              />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900">
+                                {membership.name}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                Membership Plan
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-200 text-gray-800"
+                            }`}
+                          >
+                            {isActive ? "ACTIVE" : "EXPIRED"}
+                          </span>
+                        </div>
+
+                        {/* Membership Details */}
+                        <div className="space-y-4 mb-6 border-t border-gray-200 pt-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Start Date</span>
+                            <span className="font-semibold text-gray-900">
+                              {startDate.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">End Date</span>
+                            <span className="font-semibold text-gray-900">
+                              {endDate.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          {isActive && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Days Remaining</span>
+                              <span className={`font-bold text-lg ${
+                                daysRemaining <= 7 ? "text-red-600" : "text-green-600"
+                              }`}>
+                                {daysRemaining} {daysRemaining === 1 ? "day" : "days"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Benefits */}
+                        {membership.benefits && (membership.benefits as any)?.list?.length > 0 && (
+                          <div className="mb-6 border-t border-gray-200 pt-4">
+                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+                              Benefits Included
+                            </p>
+                            <ul className="space-y-2">
+                              {(membership.benefits as any).list.slice(0, 3).map(
+                                (benefit: string, index: number) => (
+                                  <li
+                                    key={index}
+                                    className="flex gap-2 items-start text-sm text-gray-700"
+                                  >
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                                      style={{ backgroundColor: color }}
+                                    />
+                                    {benefit}
+                                  </li>
+                                )
+                              )}
+                              {(membership.benefits as any)?.list?.length > 3 && (
+                                <li className="text-xs text-gray-500 pl-3">
+                                  + {(membership.benefits as any).list.length - 3} more benefits
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Price */}
+                        <div className="pt-4 border-t border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Membership Value</p>
+                          <p className="text-2xl font-bold text-gray-900">
+                            ₹{membership.price.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+}

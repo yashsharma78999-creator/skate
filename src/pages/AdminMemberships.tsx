@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Membership } from "@/types/database";
 import { membershipService } from "@/services/database";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Star, Crown, Flame, Zap, Gift, Trophy, Heart, Award } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminMemberships() {
@@ -28,8 +28,30 @@ export default function AdminMemberships() {
     price: 0,
     duration_days: 30,
     benefits: [] as string[],
+    icon: "Star",
+    color: "silver",
   });
   const [newBenefit, setNewBenefit] = useState("");
+
+  const iconOptions = [
+    { name: "Star", Icon: Star },
+    { name: "Crown", Icon: Crown },
+    { name: "Flame", Icon: Flame },
+    { name: "Zap", Icon: Zap },
+    { name: "Gift", Icon: Gift },
+    { name: "Trophy", Icon: Trophy },
+    { name: "Heart", Icon: Heart },
+    { name: "Award", Icon: Award },
+  ];
+
+  const colorOptions = [
+    { name: "silver", label: "Silver", hex: "#C0C0C0" },
+    { name: "gold", label: "Gold", hex: "#FFD700" },
+    { name: "platinum", label: "Platinum", hex: "#E5E4E2" },
+    { name: "blue", label: "Blue", hex: "#3B82F6" },
+    { name: "purple", label: "Purple", hex: "#A855F7" },
+    { name: "emerald", label: "Emerald", hex: "#10B981" },
+  ];
 
   useEffect(() => {
     loadMemberships();
@@ -57,6 +79,8 @@ export default function AdminMemberships() {
         price: membership.price,
         duration_days: membership.duration_days,
         benefits: (membership.benefits as any)?.list || [],
+        icon: membership.icon || "Star",
+        color: membership.color || "silver",
       });
     } else {
       setEditingMembership(null);
@@ -66,6 +90,8 @@ export default function AdminMemberships() {
         price: 0,
         duration_days: 30,
         benefits: [],
+        icon: "Star",
+        color: "silver",
       });
     }
     setNewBenefit("");
@@ -103,6 +129,8 @@ export default function AdminMemberships() {
         price: parseFloat(formData.price.toString()),
         duration_days: parseInt(formData.duration_days.toString()),
         benefits: { list: formData.benefits },
+        icon: formData.icon,
+        color: formData.color,
         is_active: true,
       };
 
@@ -210,21 +238,73 @@ export default function AdminMemberships() {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Duration (Days) *
+                    </label>
+                    <Input
+                      type="number"
+                      value={formData.duration_days}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          duration_days: parseInt(e.target.value),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Icon *</label>
+                    <select
+                      value={formData.icon}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          icon: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {iconOptions.map((option) => (
+                        <option key={option.name} value={option.name}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Duration (Days) *
-                  </label>
-                  <Input
-                    type="number"
-                    value={formData.duration_days}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        duration_days: parseInt(e.target.value),
-                      })
-                    }
-                    required
-                  />
+                  <label className="text-sm font-medium">Color Theme *</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {colorOptions.map((option) => (
+                      <button
+                        key={option.name}
+                        type="button"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            color: option.name,
+                          })
+                        }
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          formData.color === option.name
+                            ? "border-blue-600 ring-2 ring-blue-500"
+                            : "border-gray-300"
+                        }`}
+                      >
+                        <div
+                          className="w-8 h-8 rounded mx-auto mb-1"
+                          style={{ backgroundColor: option.hex }}
+                        />
+                        <span className="text-xs font-medium block">
+                          {option.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -299,18 +379,34 @@ export default function AdminMemberships() {
           </div>
         ) : memberships.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {memberships.map((membership) => (
+            {memberships.map((membership) => {
+              const iconOption = iconOptions.find((opt) => opt.name === membership.icon);
+              const IconComponent = iconOption?.Icon || Star;
+              const colorOption = colorOptions.find((opt) => opt.name === membership.color);
+
+              return (
               <Card key={membership.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle>{membership.name}</CardTitle>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {membership.duration_days} days
-                      </p>
+                    <div className="flex items-start gap-3 flex-1">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: colorOption?.hex + "20" }}
+                      >
+                        <IconComponent
+                          className="w-6 h-6"
+                          style={{ color: colorOption?.hex }}
+                        />
+                      </div>
+                      <div>
+                        <CardTitle>{membership.name}</CardTitle>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {membership.duration_days} days
+                        </p>
+                      </div>
                     </div>
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                         membership.is_active
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-800"
@@ -372,7 +468,8 @@ export default function AdminMemberships() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </div>
         ) : (
           <Card>

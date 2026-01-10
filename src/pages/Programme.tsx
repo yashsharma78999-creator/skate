@@ -1,67 +1,23 @@
-import { Check, Gift, Users, Trophy, Zap, Star, Flame, Crown, ArrowRight } from 'lucide-react';
+import { Check, Gift, Users, Trophy, Zap, Star, Flame, Crown, ArrowRight, Heart, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
+import { membershipService } from '@/services/database';
+import { useEffect, useState } from 'react';
+import { Membership } from '@/types/database';
+import { toast } from 'sonner';
 
-const membershipTiers = [
-  {
-    name: "Silver",
-    icon: Star,
-    price: 49,
-    period: "per year",
-    description: "Perfect for casual skaters",
-    benefits: [
-      "10% discount on all products",
-      "Early access to new products",
-      "Monthly newsletter with tips",
-      "Exclusive member events",
-      "Birthday bonus discount",
-      "Free shipping on orders over $50"
-    ],
-    color: "silver",
-    highlighted: false
-  },
-  {
-    name: "Gold",
-    icon: Crown,
-    price: 99,
-    period: "per year",
-    description: "For dedicated skaters",
-    benefits: [
-      "20% discount on all products",
-      "Priority customer support",
-      "Free shipping on all orders",
-      "Exclusive member-only sales",
-      "Birthday bonus discount",
-      "Quarterly exclusive item drops",
-      "Points system (1 point per $1)",
-      "VIP event invitations"
-    ],
-    color: "gold",
-    highlighted: true
-  },
-  {
-    name: "Platinum",
-    icon: Flame,
-    price: 199,
-    period: "per year",
-    description: "For serious competitors",
-    benefits: [
-      "30% discount on all products",
-      "24/7 priority support",
-      "Free express shipping",
-      "First access to new releases",
-      "Birthday bonus discount",
-      "Monthly exclusive items",
-      "Points system (2 points per $1)",
-      "Personal shopping assistant",
-      "Complimentary product training"
-    ],
-    color: "platinum",
-    highlighted: false
-  }
-];
+const iconMap: Record<string, any> = {
+  Star,
+  Crown,
+  Flame,
+  Zap,
+  Gift,
+  Trophy,
+  Heart,
+  Award,
+};
 
 const features = [
   {
@@ -88,18 +44,39 @@ const features = [
 
 const Programme = () => {
   const { addItem } = useCart();
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleAddToCart = (tier: typeof membershipTiers[0]) => {
+  useEffect(() => {
+    const loadMemberships = async () => {
+      try {
+        setIsLoading(true);
+        const data = await membershipService.getAll();
+        setMemberships(data);
+      } catch (error) {
+        console.error("Error loading memberships:", error);
+        toast.error("Failed to load memberships");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMemberships();
+  }, []);
+
+  const handleAddToCart = (membership: Membership) => {
     addItem(
       {
-        id: membershipTiers.indexOf(tier) + 1000, // Use unique IDs for memberships
-        name: `${tier.name} Membership`,
-        price: tier.price,
+        id: 1000 + membership.id, // Use unique IDs for memberships
+        name: `${membership.name} Membership`,
+        price: membership.price,
         image: 'https://images.unsplash.com/photo-1556821552-5ff41cf930b2?w=400&h=400&fit=crop',
         category: 'Membership',
+        membershipId: membership.id, // Store membership ID for later processing
       },
       1
     );
+    toast.success(`${membership.name} membership added to cart!`);
   };
 
   return (
@@ -148,60 +125,72 @@ const Programme = () => {
           <p className="text-center text-muted-foreground mb-12">
             Upgrade your skating experience with the perfect membership plan
           </p>
-          
+
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600 mx-auto" />
+              <p className="text-gray-600">Loading memberships...</p>
+            </div>
+          ) : memberships.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">No memberships available at this time.</p>
+            </div>
+          ) : (
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {membershipTiers.map((tier, index) => {
-              const TierIcon = tier.icon;
+            {memberships.map((membership, index) => {
+              const IconComponent = iconMap[membership.icon || 'Star'] || Star;
+              const isPopular = membership.color === 'gold' || membership.price > memberships[0]?.price;
+
               return (
                 <div
-                  key={index}
+                  key={membership.id}
                   className={`relative rounded-xl border transition-all duration-300 overflow-hidden group ${
-                    tier.highlighted
+                    isPopular
                       ? "border-accent shadow-xl md:scale-105"
                       : "border-border hover:border-accent/50"
                   }`}
                 >
                   {/* Background */}
                   <div className={`absolute inset-0 bg-gradient-to-b ${
-                    tier.highlighted
+                    isPopular
                       ? "from-accent/5 to-transparent"
                       : "from-background to-transparent"
                   }`} />
 
                   {/* Badge for highlighted tier */}
-                  {tier.highlighted && (
+                  {isPopular && (
                     <div className="absolute top-0 left-0 right-0 bg-accent text-accent-foreground text-sm font-bold py-2 text-center">
                       ⭐ MOST POPULAR
                     </div>
                   )}
 
-                  <div className={`relative p-8 ${tier.highlighted ? "pt-16" : ""}`}>
+                  <div className={`relative p-8 ${isPopular ? "pt-16" : ""}`}>
                     {/* Tier Header */}
                     <div className="flex items-center gap-3 mb-4">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        tier.highlighted
+                        isPopular
                           ? "bg-accent text-accent-foreground"
                           : "bg-accent/10 text-accent"
                       }`}>
-                        <TierIcon className="w-6 h-6" />
+                        <IconComponent className="w-6 h-6" />
                       </div>
-                      <h3 className="text-2xl font-bold">{tier.name}</h3>
+                      <h3 className="text-2xl font-bold">{membership.name}</h3>
                     </div>
 
-                    <p className="text-muted-foreground mb-6 text-sm">{tier.description}</p>
+                    <p className="text-muted-foreground mb-6 text-sm">{membership.description || "Premium membership benefits"}</p>
 
                     {/* Price */}
                     <div className="mb-8">
-                      <span className="text-4xl font-bold">${tier.price}</span>
-                      <span className="text-muted-foreground ml-2">/{tier.period}</span>
+                      <span className="text-4xl font-bold">₹{membership.price.toFixed(0)}</span>
+                      <span className="text-muted-foreground ml-2">/{membership.duration_days} days</span>
                     </div>
 
                     {/* CTA Button */}
                     <Button
-                      variant={tier.highlighted ? "gold" : "outline"}
+                      variant={isPopular ? "gold" : "outline"}
                       className="w-full mb-8"
                       size="lg"
-                      onClick={() => handleAddToCart(tier)}
+                      onClick={() => handleAddToCart(membership)}
                     >
                       Add to Cart <ArrowRight className="w-4 h-4" />
                     </Button>
@@ -209,18 +198,26 @@ const Programme = () => {
                     {/* Benefits List */}
                     <div className="space-y-3">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Includes:</p>
-                      {tier.benefits.map((benefit, bIndex) => (
-                        <div key={bIndex} className="flex gap-3 items-start">
+                      {(membership.benefits as any)?.list?.length > 0 ? (
+                        (membership.benefits as any).list.map((benefit: string, bIndex: number) => (
+                          <div key={bIndex} className="flex gap-3 items-start">
+                            <Check className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                            <span className="text-sm text-foreground">{benefit}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex gap-3 items-start">
                           <Check className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-                          <span className="text-sm text-foreground">{benefit}</span>
+                          <span className="text-sm text-foreground">Premium membership benefits</span>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+          )}
         </div>
       </section>
 

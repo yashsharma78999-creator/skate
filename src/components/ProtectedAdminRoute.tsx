@@ -14,8 +14,11 @@ export default function ProtectedAdminRoute({
 }: ProtectedAdminRouteProps) {
   const { user, isAdmin, isLoading } = useAuth();
 
+  console.log("[ProtectedAdminRoute] Check - isLoading:", isLoading, "user:", user, "isAdmin:", isAdmin);
+
   // Show loading state while auth is being checked
   if (isLoading) {
+    console.log("[ProtectedAdminRoute] Showing loading state...");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -28,9 +31,11 @@ export default function ProtectedAdminRoute({
 
   // Redirect to login if not authenticated or not admin
   if (!user || !isAdmin) {
+    console.log("[ProtectedAdminRoute] Redirecting to login - user exists:", !!user, "isAdmin:", isAdmin);
     return <Navigate to="/admin/login" replace />;
   }
 
+  console.log("[ProtectedAdminRoute] Access granted to admin user:", user.id);
   // Render protected content
   return <>{children}</>;
 }

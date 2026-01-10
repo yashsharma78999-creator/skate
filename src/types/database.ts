@@ -57,6 +57,8 @@ export interface Membership {
   price: number;
   duration_days: number;
   benefits: Record<string, any> | null;
+  icon: string | null; // Icon name from lucide-react (e.g., "Star", "Crown", "Flame", "Zap", "Gift", "Trophy")
+  color: string | null; // Color theme for the membership (e.g., "silver", "gold", "platinum")
   is_active: boolean;
   created_at: string;
   updated_at: string;
