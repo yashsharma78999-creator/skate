@@ -38,7 +38,7 @@ const About = () => {
       <section className="bg-primary py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6">
-            About <span className="text-accent">JP Skating Club</span>
+            About <span className="text-accent">Skating</span>
           </h1>
           <p className="text-lg md:text-xl text-primary-foreground/80 max-w-3xl mx-auto">
             Born from a passion for ice skating, we're dedicated to bringing 
