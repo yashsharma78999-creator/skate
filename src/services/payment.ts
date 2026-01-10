@@ -43,10 +43,14 @@ const processMembershipsForOrder = async (orderId: number, userId: string | null
 
     // Parse membership IDs from order notes
     // Format: "MEMBERSHIPS:[1,2,3]|other notes"
-    const membershipMatch = order.notes.match(/MEMBERSHIPS:(\[[\d,]*\])/);
-    if (!membershipMatch) return;
+    const membershipMatch = order.notes.match(/MEMBERSHIPS:(\[[\d,\s]*\])/);
+    if (!membershipMatch) {
+      console.log(`[PAYMENT] No membership IDs found in order notes: ${order.notes}`);
+      return;
+    }
 
     const membershipIds = JSON.parse(membershipMatch[1]) as number[];
+    console.log(`[PAYMENT] Extracted membership IDs: ${JSON.stringify(membershipIds)}`);
 
     // Create user_membership records for each membership
     const now = new Date();
