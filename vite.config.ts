@@ -9,15 +9,20 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     allowedHosts: [".onrender.com"]
   },
-  build: {
-    outDir: "dist",
-    sourcemap: false,
-    minify: "terser",
-    target: "esnext"
-  },
-  plugins: [react(), mode === "production" ? null : componentTagger()].filter(Boolean),
+  plugins: [
+    react({
+      // Force production JSX transform
+      jsxRuntime: 'automatic',
+      dev: mode === 'development'  // Only dev mode gets dev features
+    }), 
+    mode === "development" ? componentTagger() : null
+  ].filter(Boolean),
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") }
   },
-  base: "/"  // Important for Render root deployment
+  base: "/",
+  build: {
+    target: 'esnext',  // Modern browsers, proper JSX
+    minify: 'terser'   // Ensure terser is installed
+  }
 }));
