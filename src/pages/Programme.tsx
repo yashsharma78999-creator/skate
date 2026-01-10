@@ -2,6 +2,7 @@ import { Check, Gift, Users, Trophy, Zap, Star, Flame, Crown, ArrowRight } from 
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
+import { useCart } from '@/contexts/CartContext';
 
 const membershipTiers = [
   {
