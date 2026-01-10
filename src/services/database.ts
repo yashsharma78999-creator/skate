@@ -318,6 +318,35 @@ export const userMembershipService = {
     if (error) throw error;
     return data as UserMembership;
   },
+
+  async getAllSubscribers() {
+    const { data, error } = await supabase
+      .from("user_memberships")
+      .select(`
+        *,
+        memberships(*),
+        profiles(id, email, full_name, avatar_url, created_at)
+      `)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data as any[];
+  },
+
+  async getActiveSubscribers() {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("user_memberships")
+      .select(`
+        *,
+        memberships(*),
+        profiles(id, email, full_name, avatar_url, created_at)
+      `)
+      .eq("is_active", true)
+      .gte("end_date", now)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data as any[];
+  },
 };
 
 // ===== INVENTORY LOGS =====
