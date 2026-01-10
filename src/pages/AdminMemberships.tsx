@@ -129,6 +129,8 @@ export default function AdminMemberships() {
         price: parseFloat(formData.price.toString()),
         duration_days: parseInt(formData.duration_days.toString()),
         benefits: { list: formData.benefits },
+        icon: formData.icon,
+        color: formData.color,
         is_active: true,
       };
 
