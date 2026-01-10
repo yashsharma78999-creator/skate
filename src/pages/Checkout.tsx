@@ -192,7 +192,8 @@ export default function Checkout() {
       const paymentResult = await paymentService.simulatePaymentSuccess(
         order.id,
         total,
-        user!.email
+        user!.email,
+        user!.id
       );
 
       if (paymentResult.status === "success") {
