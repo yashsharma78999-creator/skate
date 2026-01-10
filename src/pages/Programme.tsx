@@ -2,6 +2,7 @@ import { Check, Gift, Users, Trophy, Zap, Star, Flame, Crown, ArrowRight } from 
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
+import { useCart } from '@/contexts/CartContext';
 
 const membershipTiers = [
   {
@@ -86,6 +87,21 @@ const features = [
 ];
 
 const Programme = () => {
+  const { addItem } = useCart();
+
+  const handleAddToCart = (tier: typeof membershipTiers[0]) => {
+    addItem(
+      {
+        id: membershipTiers.indexOf(tier) + 1000, // Use unique IDs for memberships
+        name: `${tier.name} Membership`,
+        price: tier.price,
+        image: 'https://images.unsplash.com/photo-1556821552-5ff41cf930b2?w=400&h=400&fit=crop',
+        category: 'Membership',
+      },
+      1
+    );
+  };
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -185,11 +201,9 @@ const Programme = () => {
                       variant={tier.highlighted ? "gold" : "outline"}
                       className="w-full mb-8"
                       size="lg"
-                      asChild
+                      onClick={() => handleAddToCart(tier)}
                     >
-                      <Link to="/store" className="flex items-center justify-center gap-2">
-                        Get Started <ArrowRight className="w-4 h-4" />
-                      </Link>
+                      Add to Cart <ArrowRight className="w-4 h-4" />
                     </Button>
 
                     {/* Benefits List */}
@@ -215,7 +229,7 @@ const Programme = () => {
         <div className="container mx-auto text-center max-w-2xl">
           <h2 className="text-3xl font-bold mb-4">Ready to Join?</h2>
           <p className="text-muted-foreground mb-8">
-            Start enjoying exclusive benefits and become part of the JP Skating community today.
+            Start enjoying exclusive benefits and become part of the Skating community today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="gold" size="lg" asChild>

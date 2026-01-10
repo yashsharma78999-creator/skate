@@ -3,8 +3,9 @@ import { ArrowRight, Star, Truck, Shield, Clock, Trophy, Users, Award, Quote, Ch
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
 import heroImage from "@/assets/hero-stadium.jpg";
-import { allProducts } from "@/data/products";
-const featuredProducts = allProducts.slice(0, 4);
+import { useEffect, useState } from "react";
+import { productService } from "@/services/database";
+import type { Product } from "@/types/database";
 const features = [{
   icon: Truck,
   title: "Free Shipping",
@@ -33,21 +34,21 @@ const stats = [{
 }];
 const testimonials = [{
   name: "Coach Elena Petrova",
-  role: "Head Coach, JP Skating Academy",
+  role: "Head Coach, Skating Academy",
   image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face",
-  quote: "The quality of equipment from JP Skating Club is unmatched. Our academy skaters have shown remarkable improvement since we switched to their gear.",
+  quote: "The quality of equipment is unmatched. Our academy skaters have shown remarkable improvement since we switched to their gear.",
   rating: 5
 }, {
   name: "Coach Michael Chen",
   role: "Youth Development Director",
   image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-  quote: "As a coach, I need equipment I can trust. JP Skating delivers professional-grade gear that helps young skaters develop their skills with confidence.",
+  quote: "As a coach, I need equipment I can trust. We deliver professional-grade gear that helps young skaters develop their skills with confidence.",
   rating: 5
 }, {
   name: "Coach Sarah Williams",
   role: "National Team Coach",
   image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face",
-  quote: "From training sessions to competition day, JP Skating products perform at the highest level. Highly recommended for serious skaters.",
+  quote: "From training sessions to competition day, our products perform at the highest level. Highly recommended for serious skaters.",
   rating: 5
 }];
 const partners = [{
@@ -91,6 +92,26 @@ const categories = [{
   count: "300+"
 }];
 const Index = () => {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFeaturedProducts = async () => {
+      try {
+        setIsLoading(true);
+        const products = await productService.getAll();
+        setFeaturedProducts(products.slice(0, 4));
+      } catch (error) {
+        console.error("Error loading featured products:", error);
+        setFeaturedProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFeaturedProducts();
+  }, []);
+
   return <Layout>
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -205,9 +226,15 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map(product => <Link key={product.id} to={`/product/${product.id}`} className="group bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            {isLoading ? (
+              <div className="col-span-4 text-center py-12">
+                <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-primary mx-auto" />
+                <p className="text-muted-foreground">Loading featured products...</p>
+              </div>
+            ) : featuredProducts.length > 0 ? (
+              featuredProducts.map(product => <Link key={product.id} to={`/product/${product.id}`} className="group bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <div className="aspect-square overflow-hidden bg-muted">
-                  <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={product.image_url || ""} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 </div>
                 <div className="p-4">
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -218,17 +245,22 @@ const Index = () => {
                   </h3>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-lg font-bold text-foreground">
-                      ${product.price}
+                      ${product.price.toFixed(2)}
                     </span>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 fill-accent text-accent" />
                       <span className="text-sm text-muted-foreground">
-                        {product.rating}
+                        {product.rating || 5}
                       </span>
                     </div>
                   </div>
                 </div>
-              </Link>)}
+              </Link>)
+            ) : (
+              <div className="col-span-4 text-center py-12">
+                <p className="text-muted-foreground">No featured products available</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -291,7 +323,7 @@ const Index = () => {
             {/* Right Side - Membership Tiers Preview */}
             <div className="grid grid-cols-1 gap-6">
               {/* Silver Tier */}
-              <div className="rounded-xl border border-border bg-card hover:shadow-lg transition-shadow p-6">
+              <Link to="/programme" className="rounded-xl border border-border bg-card hover:shadow-lg transition-shadow p-6 hover:-translate-y-1 transition-all duration-300 cursor-pointer block">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
                     <Star className="w-6 h-6 text-gray-400" />
@@ -315,10 +347,10 @@ const Index = () => {
                     <span>Free shipping over $50</span>
                   </li>
                 </ul>
-              </div>
+              </Link>
 
               {/* Gold Tier - Highlighted */}
-              <div className="rounded-xl border-2 border-accent bg-accent/5 hover:shadow-xl transition-shadow p-6 relative">
+              <Link to="/programme" className="rounded-xl border-2 border-accent bg-accent/5 hover:shadow-xl transition-shadow p-6 relative hover:-translate-y-1 transition-all duration-300 cursor-pointer block">
                 <div className="absolute -top-3 left-4 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full">
                   ⭐ POPULAR
                 </div>
@@ -345,10 +377,10 @@ const Index = () => {
                     <span>Priority customer support</span>
                   </li>
                 </ul>
-              </div>
+              </Link>
 
               {/* Platinum Tier */}
-              <div className="rounded-xl border border-border bg-card hover:shadow-lg transition-shadow p-6">
+              <Link to="/programme" className="rounded-xl border border-border bg-card hover:shadow-lg transition-shadow p-6 hover:-translate-y-1 transition-all duration-300 cursor-pointer block">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-orange-200 flex items-center justify-center">
                     <Trophy className="w-6 h-6 text-orange-600" />
@@ -372,7 +404,7 @@ const Index = () => {
                     <span>Personal shopping assistant</span>
                   </li>
                 </ul>
-              </div>
+              </Link>
             </div>
           </div>
         </div>
@@ -383,7 +415,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
-              Why Choose <span className="text-accent">JP Skating</span>
+              Why Choose <span className="text-accent">Skating</span>
             </h2>
             <p className="text-primary-foreground/70 max-w-2xl mx-auto">
               We are committed to providing the best skating gear and experience for athletes of all levels.
@@ -433,7 +465,7 @@ const Index = () => {
               What Coaches Say
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Hear from top coaches and trainers who trust JP Skating for their teams.
+              Hear from top coaches and trainers who trust us for their teams.
             </p>
           </div>
 
@@ -486,7 +518,7 @@ const Index = () => {
       <section className="py-16 md:py-24 bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
-            Join the <span className="text-accent">JP Skating</span> Community
+            Join the <span className="text-accent">Skating</span> Community
           </h2>
           <p className="text-primary-foreground/80 max-w-2xl mx-auto mb-8">
             Subscribe to get exclusive deals, early access to new arrivals, and insider tips from pro skaters.

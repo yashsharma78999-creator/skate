@@ -58,7 +58,7 @@ const Auth = () => {
             <Trophy className="w-7 h-7 text-accent-foreground" />
           </div>
           <span className="text-2xl font-bold text-primary-foreground tracking-tight">
-            JP<span className="text-accent">Skating</span>
+            <span className="text-accent">Skating</span>
           </span>
         </Link>
 
@@ -71,7 +71,7 @@ const Auth = () => {
             <p className="text-muted-foreground mt-2">
               {isLogin
                 ? 'Sign in to access your account'
-                : 'Join the JP Skating community'}
+                : 'Join the Skating community'}
             </p>
           </div>
 

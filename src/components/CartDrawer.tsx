@@ -30,6 +30,11 @@ const CartDrawer = () => {
       setIsLoadingProducts(true);
       const itemsWithFreshData = await Promise.all(
         items.map(async (item) => {
+          // Skip fresh data fetching for memberships
+          if (item.product.category === 'Membership') {
+            return item;
+          }
+
           try {
             const freshProduct = await productService.getById(item.product.id);
             return {

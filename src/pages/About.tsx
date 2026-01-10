@@ -38,7 +38,7 @@ const About = () => {
       <section className="bg-primary py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6">
-            About <span className="text-accent">JP Skating Club</span>
+            About <span className="text-accent">Skating</span>
           </h1>
           <p className="text-lg md:text-xl text-primary-foreground/80 max-w-3xl mx-auto">
             Born from a passion for ice skating, we're dedicated to bringing 
@@ -72,7 +72,7 @@ const About = () => {
               </h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
                 <p>
-                  JP Skating Club started in 2020 with a simple mission: make professional-grade 
+                  Skating started in 2020 with a simple mission: make professional-grade
                   ice skating equipment accessible to everyone who loves the sport.
                 </p>
                 <p>
@@ -109,7 +109,7 @@ const About = () => {
               Our Values
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              These principles guide everything we do at JP Skating Club.
+              These principles guide everything we do at Skating.
             </p>
           </div>
 

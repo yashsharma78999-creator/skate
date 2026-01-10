@@ -31,15 +31,32 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'jpskating_cart';
+const CART_STORAGE_KEY = 'skating_cart';
+const OLD_CART_STORAGE_KEY = 'jpskating_cart';
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Load cart from localStorage on mount
+  // Load cart from localStorage on mount with migration support
   useEffect(() => {
-    const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+    let savedCart = localStorage.getItem(CART_STORAGE_KEY);
+
+    // Migration: if new key doesn't exist but old key does, migrate
+    if (!savedCart) {
+      const oldCart = localStorage.getItem(OLD_CART_STORAGE_KEY);
+      if (oldCart) {
+        try {
+          const parsedCart = JSON.parse(oldCart);
+          localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(parsedCart));
+          localStorage.removeItem(OLD_CART_STORAGE_KEY);
+          savedCart = oldCart;
+        } catch {
+          localStorage.removeItem(OLD_CART_STORAGE_KEY);
+        }
+      }
+    }
+
     if (savedCart) {
       try {
         setItems(JSON.parse(savedCart));
