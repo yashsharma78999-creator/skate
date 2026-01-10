@@ -24,6 +24,7 @@ import AdminInventory from "./pages/AdminInventory";
 import AdminPaymentOptions from "./pages/AdminPaymentOptions";
 import AdminMemberships from "./pages/AdminMemberships";
 import AdminSubscribers from "./pages/AdminSubscribers";
+import SupabaseTest from "./pages/SupabaseTest";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import UserProfile from "./pages/UserProfile";
