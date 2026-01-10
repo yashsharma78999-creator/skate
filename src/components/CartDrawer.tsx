@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Minus, Plus, ShoppingBag, Trash2, X, Loader2 } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Trash2, X, Loader2, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import {
