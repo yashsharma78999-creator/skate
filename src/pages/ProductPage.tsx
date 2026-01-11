@@ -3,6 +3,7 @@ import { ArrowLeft, Star, ShoppingCart, Heart, Truck, Shield, RotateCcw, Minus, 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
+import ProductImageGallery from "@/components/ProductImageGallery";
 import { toast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { productService } from "@/services/database";
