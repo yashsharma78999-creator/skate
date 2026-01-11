@@ -58,8 +58,17 @@ const INITIAL_PRODUCTS = [
 export const migrationService = {
   async seedInitialProducts() {
     try {
+      // Add timeout to prevent blocking app initialization
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Migration timeout")), 8000)
+      );
+
       // Check if products already exist
-      const existingProducts = await productService.getAll();
+      const existingProductsPromise = productService.getAll();
+      const existingProducts = await Promise.race([
+        existingProductsPromise,
+        timeoutPromise,
+      ]);
 
       if (existingProducts.length > 0) {
         console.log("Products already exist in database. Skipping migration.");
@@ -74,7 +83,7 @@ export const migrationService = {
 
       console.log("Initial products seeded successfully");
     } catch (error) {
-      console.error("Error seeding products:", error);
+      console.debug("Error seeding products (non-blocking):", error instanceof Error ? error.message : String(error));
     }
   },
 };
