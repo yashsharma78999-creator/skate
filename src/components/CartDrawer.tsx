@@ -25,6 +25,13 @@ const CartDrawer = () => {
     }
   }, [isOpen, items]);
 
+  // Reset checkout state when drawer closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsCheckingOut(false);
+    }
+  }, [isOpen]);
+
   const loadFreshProductData = async () => {
     try {
       setIsLoadingProducts(true);
