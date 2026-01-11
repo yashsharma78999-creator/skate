@@ -7,7 +7,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    allowedHosts: [".onrender.com"]
+    allowedHosts: [".onrender.com", ".builderio.xyz"],
+    hmr: process.env.VITE_HMR_HOST
+      ? {
+          host: process.env.VITE_HMR_HOST,
+          protocol: process.env.VITE_HMR_PROTOCOL || "wss",
+          port: process.env.VITE_HMR_PORT ? parseInt(process.env.VITE_HMR_PORT) : 443,
+        }
+      : undefined,
   },
   build: {
     outDir: "dist",
