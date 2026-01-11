@@ -113,11 +113,11 @@ const MembershipCard = ({
           />
         </div>
 
-        <div className="relative p-6 sm:p-8">
+        <div className="relative p-4 sm:p-6 md:p-8">
           {/* Status Badge */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
             <span
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${
+              className={`inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap ${
                 isActive
                   ? "bg-green-100 text-green-800"
                   : "bg-gray-300 text-gray-700"
@@ -125,34 +125,34 @@ const MembershipCard = ({
             >
               {isActive ? "🟢 ACTIVE" : "⚪ EXPIRED"}
             </span>
-            <span className="text-xs font-mono text-gray-500">
+            <span className="text-xs font-mono text-gray-500 truncate">
               ID: {membershipNumber}
             </span>
           </div>
 
           {/* Header with Icon and Title */}
-          <div className="flex items-start gap-4 mb-6">
+          <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div
-              className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-all duration-300"
               style={{
                 backgroundColor: color + "20",
                 border: `2px solid ${color}`,
               }}
             >
-              <IconComponent className="w-9 h-9" style={{ color }} />
+              <IconComponent className="w-7 h-7 sm:w-9 sm:h-9" style={{ color }} />
             </div>
-            <div className="flex-1">
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 break-words">
                 {membership.name}
               </h3>
-              <p className="text-gray-600 text-sm mt-1">
+              <p className="text-gray-600 text-xs sm:text-sm mt-1">
                 {isActive ? "Your premium membership" : "Membership expired"}
               </p>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mb-6" />
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mb-4 sm:mb-6" />
 
           {/* Key Information Grid */}
           <div className="grid grid-cols-2 gap-4 mb-6">
