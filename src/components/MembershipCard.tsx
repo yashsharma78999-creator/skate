@@ -47,7 +47,10 @@ const MembershipCard = ({
   const membership = userMembership.membership;
   const [showBenefits, setShowBenefits] = useState(false);
 
-  if (!membership) return null;
+  if (!membership) {
+    console.warn("[MEMBERSHIP_CARD] Missing membership data for user membership:", userMembership);
+    return null;
+  }
 
   const IconComponent = iconMap[membership.icon || "Star"] || Star;
   const color = colorMap[membership.color || "silver"];
