@@ -293,13 +293,16 @@ export const userMembershipService = {
   async getActiveByUserId(userId: string) {
     const { data, error } = await supabase
       .from("user_memberships")
-      .select("*, memberships(*)")
+      .select("*, membership:membership_id(*)")
       .eq("user_id", userId)
       .eq("is_active", true)
       .gte("end_date", new Date().toISOString())
       .order("end_date", { ascending: false });
     if (error) throw error;
-    return data as any[];
+    return (data || []).map((item: any) => ({
+      ...item,
+      membership: item.membership || null,
+    })) as any[];
   },
 
   async create(userMembership: Omit<UserMembership, "id" | "created_at" | "updated_at">) {
