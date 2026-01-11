@@ -167,28 +167,31 @@ export default function UserProfile() {
 
           {/* Memberships Section */}
           <div>
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3 sm:gap-4">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900">My Memberships</h2>
-                <p className="text-gray-600 mt-2">Active and inactive memberships</p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">My Memberships</h2>
+                <p className="text-sm sm:text-base text-gray-600 mt-2">Active and inactive memberships</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   onClick={handleRefresh}
                   variant="outline"
-                  size="lg"
+                  size="sm"
                   disabled={isRefreshing}
-                  className="gap-2"
+                  className="gap-2 text-xs sm:text-sm"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                  {isRefreshing ? "Refreshing..." : "Refresh"}
+                  <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+                  <span className="sm:hidden">{isRefreshing ? "..." : "Refresh"}</span>
                 </Button>
                 <Button
                   onClick={() => navigate("/programme")}
-                  size="lg"
+                  size="sm"
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm"
                 >
-                  <Award className="w-4 h-4 mr-2" />
-                  Browse Memberships
+                  <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Browse Memberships</span>
+                  <span className="sm:hidden">Browse</span>
                 </Button>
               </div>
             </div>
