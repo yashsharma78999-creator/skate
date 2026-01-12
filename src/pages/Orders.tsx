@@ -271,7 +271,7 @@ export default function Orders() {
                         </div>
 
                         {/* Details Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div className={`grid gap-4 mb-6 ${membershipStatus === "queued" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>
                           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
                             <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
                               Start Date
@@ -288,14 +288,26 @@ export default function Orders() {
                               {new Date(item.end_date).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
-                            <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
-                              Duration
-                            </p>
-                            <p className="text-white font-semibold text-lg mt-2">
-                              {item.membership?.duration_days || 0} days
-                            </p>
-                          </div>
+                          {membershipStatus !== "queued" && (
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                              <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
+                                Duration
+                              </p>
+                              <p className="text-white font-semibold text-lg mt-2">
+                                {item.membership?.duration_days || 0} days
+                              </p>
+                            </div>
+                          )}
+                          {membershipStatus === "queued" && (
+                            <div className="bg-blue-400/20 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                              <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
+                                Activates On
+                              </p>
+                              <p className="text-white font-semibold text-lg mt-2">
+                                {new Date(item.nextActivationDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {/* Benefits */}
