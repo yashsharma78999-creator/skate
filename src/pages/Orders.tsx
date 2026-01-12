@@ -36,7 +36,7 @@ export default function Orders() {
       if (user?.id) {
         const [ordersData, membershipsData] = await Promise.all([
           orderService.getByUserId(user.id),
-          userMembershipService.getByUserId(user.id),
+          userMembershipService.getUserMembershipsWithQueue(user.id),
         ]);
 
         // Combine orders and memberships
