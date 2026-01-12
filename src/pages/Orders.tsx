@@ -5,21 +5,22 @@ import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
-import { orderService } from "@/services/database";
-import { Eye, Package, Check, Truck, Home, Clock } from "lucide-react";
+import { orderService, userMembershipService } from "@/services/database";
+import { paymentService } from "@/services/payment";
+import { Eye, Package, Check, Truck, Home, Clock, Crown, Zap, Gift, Trophy, Star, Flame } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Orders() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      loadOrders();
+      loadOrdersAndMemberships();
     }
   }, [isAuthenticated, user]);
 
@@ -30,42 +31,78 @@ export default function Orders() {
     }
   }, [location.state]);
 
-  const loadOrders = async () => {
+  const loadOrdersAndMemberships = async () => {
     try {
       setIsLoading(true);
       if (user?.id) {
-        const data = await orderService.getByUserId(user.id);
-        setOrders(data);
+        // First, activate any queued memberships that are ready
+        await paymentService.activateQueuedMemberships(user.id);
+
+        const [ordersData, membershipsData] = await Promise.all([
+          orderService.getByUserId(user.id),
+          userMembershipService.getUserMembershipsWithQueue(user.id),
+        ]);
+
+        // Combine orders and memberships
+        const combinedItems = [
+          ...ordersData.map((order: any) => ({
+            ...order,
+            type: "order",
+            date: new Date(order.created_at),
+          })),
+          ...membershipsData.map((membership: any) => ({
+            ...membership,
+            type: "membership",
+            date: new Date(membership.created_at),
+          })),
+        ];
+
+        // Sort by date (newest first)
+        combinedItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+        setItems(combinedItems);
       }
     } catch (error) {
-      console.error("Error loading orders:", error);
+      console.error("Error loading orders and memberships:", error);
       toast.error("Failed to load orders");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <Layout>
-        <div className="min-h-screen bg-gray-50 py-12 px-4">
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardContent className="pt-12 pb-12 text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Sign in to view orders
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Please log in to see your order history and tracking information
-                </p>
-                <Button onClick={() => navigate("/auth")}>Sign In</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  const getColorFromMembership = (color: string | null) => {
+    const colorMap: Record<string, string> = {
+      gold: "from-yellow-400 to-yellow-600",
+      silver: "from-gray-300 to-gray-500",
+      platinum: "from-cyan-400 to-blue-600",
+      bronze: "from-orange-400 to-orange-600",
+      blue: "from-blue-400 to-blue-600",
+      purple: "from-purple-400 to-purple-600",
+      pink: "from-pink-400 to-pink-600",
+      green: "from-green-400 to-green-600",
+    };
+    return colorMap[color || "blue"] || colorMap.blue;
+  };
+
+  const getMembershipIcon = (iconName: string | null) => {
+    const iconClass = "w-6 h-6";
+    switch (iconName) {
+      case "Crown":
+        return <Crown className={iconClass} />;
+      case "Zap":
+        return <Zap className={iconClass} />;
+      case "Gift":
+        return <Gift className={iconClass} />;
+      case "Trophy":
+        return <Trophy className={iconClass} />;
+      case "Star":
+        return <Star className={iconClass} />;
+      case "Flame":
+        return <Flame className={iconClass} />;
+      default:
+        return <Crown className={iconClass} />;
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     const iconClass = "w-5 h-5";
@@ -109,15 +146,37 @@ export default function Orders() {
     return steps.indexOf(order.status) + 1;
   };
 
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-12 px-4">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Sign in to view orders
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Please log in to see your order history and tracking information
+                </p>
+                <Button onClick={() => navigate("/auth")}>Sign In</Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+            <h1 className="text-3xl font-bold text-gray-900">My Orders & Memberships</h1>
             <p className="text-gray-600 mt-1">
-              Track and manage all your orders in one place
+              Track your orders and manage your membership subscriptions
             </p>
           </div>
 
@@ -128,134 +187,390 @@ export default function Orders() {
                 <p className="text-gray-600">Loading your orders...</p>
               </CardContent>
             </Card>
-          ) : orders.length > 0 ? (
+          ) : items.length > 0 ? (
             <div className="space-y-6">
-              {orders.map((order) => (
-                <Card key={order.id}>
-                  <CardContent className="pt-6">
-                    <div className="space-y-6">
-                      {/* Order Header */}
-                      <div className="flex items-center justify-between pb-6 border-b">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            Order #{order.order_number}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Placed on{" "}
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-gray-900">
-                            ₹{order.total_amount.toFixed(2)}
-                          </p>
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${getStatusColor(
-                              order.status
-                            )}`}
-                          >
-                            {order.status.charAt(0).toUpperCase() +
-                              order.status.slice(1)}
-                          </span>
-                        </div>
-                      </div>
+              {items.map((item) => {
+                if (item.type === "membership") {
+                  // Membership Card
+                  const colorClass = getColorFromMembership(item.membership?.color);
+                  const membershipStatus = item.status || (item.is_active ? "active" : "expired");
 
-                      {/* Order Progress */}
-                      {order.status !== "cancelled" && (
-                        <div className="space-y-3">
-                          <p className="text-sm font-semibold text-gray-900">
-                            Delivery Status
-                          </p>
-                          <div className="flex items-center justify-between">
-                            {orderSteps.map((step, index) => {
-                              const StepIcon = step.icon;
-                              const isCompleted =
-                                getOrderProgress(order) > index;
-                              const isCurrent =
-                                getOrderProgress(order) === index + 1;
+                  const getStatusDisplay = () => {
+                    switch (membershipStatus) {
+                      case "active":
+                        return { text: "✓ Active", bgColor: "bg-green-400/30" };
+                      case "queued":
+                        return {
+                          text: `Queued #${item.queuePosition}`,
+                          bgColor: "bg-blue-400/30"
+                        };
+                      case "pending":
+                        return {
+                          text: "Upcoming",
+                          bgColor: "bg-amber-400/30"
+                        };
+                      case "expired":
+                        return {
+                          text: "Expired",
+                          bgColor: "bg-red-400/30"
+                        };
+                      default:
+                        return {
+                          text: "Active",
+                          bgColor: "bg-green-400/30"
+                        };
+                    }
+                  };
 
-                              return (
-                                <div
-                                  key={step.status}
-                                  className="flex flex-col items-center flex-1"
-                                >
-                                  <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-                                      isCompleted || isCurrent
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-gray-200 text-gray-600"
-                                    }`}
-                                  >
-                                    <StepIcon className="w-5 h-5" />
-                                  </div>
-                                  <p className="text-xs font-medium text-gray-600 text-center">
-                                    {step.label}
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
+                  const statusDisplay = getStatusDisplay();
+
+                  return (
+                    <div
+                      key={`membership-${item.id}`}
+                      className={`group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${
+                        membershipStatus === "queued" ? "opacity-85" : ""
+                      }`}
+                    >
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-95`}
+                      />
+
+                      {/* Queued overlay indicator */}
+                      {membershipStatus === "queued" && (
+                        <div className="absolute top-0 left-0 right-0 bg-blue-600/50 text-white text-xs font-semibold py-2 px-4 text-center backdrop-blur-sm">
+                          Queued for Renewal - Activates {new Date(item.nextActivationDate).toLocaleDateString()}
                         </div>
                       )}
 
-                      {/* Order Items Summary */}
-                      <div className="space-y-3">
-                        <p className="text-sm font-semibold text-gray-900">
-                          Items ({order.order_items?.length || 0})
-                        </p>
-                        <div className="space-y-2">
-                          {order.order_items?.map((item: any) => (
-                            <div
-                              key={item.id}
-                              className="flex justify-between text-sm"
-                            >
-                              <span className="text-gray-600">
-                                {item.products?.name || "Product"} x{" "}
-                                {item.quantity}
-                              </span>
-                              <span className="font-medium">
-                                ₹{item.price.toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      {/* Background decorations */}
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform duration-300" />
+                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16" />
 
-                      {/* Payment Status */}
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            Payment Status
-                          </p>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {order.payment_status === "completed"
-                              ? "✓ Paid"
-                              : "Pending"}
-                          </p>
+                      <div className={`relative p-6 sm:p-8 ${membershipStatus === "queued" ? "pt-16" : ""}`}>
+                        {/* Header with Icon */}
+                        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
+                          <div className="flex items-start gap-4">
+                            <div className="p-3 rounded-lg bg-white/20 backdrop-blur-sm text-white">
+                              {getMembershipIcon(item.membership?.icon)}
+                            </div>
+                            <div>
+                              <h3 className="text-2xl font-bold text-white">
+                                {item.membership?.name || "Membership"}
+                              </h3>
+                              <p className="text-white/80 text-sm mt-1">
+                                Purchased on {new Date(item.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-white">
+                              ₹{item.membership?.price || 0}
+                            </div>
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${statusDisplay.bgColor} text-white backdrop-blur-sm border border-white/20`}
+                            >
+                              {statusDisplay.text}
+                            </span>
+                          </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedOrder(order)}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Details
-                        </Button>
+
+                        {/* Details Grid */}
+                        <div className={`grid gap-4 mb-6 ${membershipStatus === "queued" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>
+                          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                            <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
+                              Start Date
+                            </p>
+                            <p className="text-white font-semibold text-lg mt-2">
+                              {new Date(item.start_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                            <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
+                              End Date
+                            </p>
+                            <p className="text-white font-semibold text-lg mt-2">
+                              {new Date(item.end_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {membershipStatus !== "queued" && (
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                              <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
+                                Duration
+                              </p>
+                              <p className="text-white font-semibold text-lg mt-2">
+                                {item.membership?.duration_days || 0} days
+                              </p>
+                            </div>
+                          )}
+                          {membershipStatus === "queued" && (
+                            <div className="bg-blue-400/20 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                              <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
+                                Activates On
+                              </p>
+                              <p className="text-white font-semibold text-lg mt-2">
+                                {new Date(item.nextActivationDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Benefits */}
+                        {item.membership?.benefits &&
+                          Object.keys(item.membership.benefits).length > 0 && (
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                              <p className="text-white/70 text-xs uppercase tracking-wider font-medium mb-3">
+                                Benefits
+                              </p>
+                              <div className="grid grid-cols-2 gap-3">
+                                {Object.entries(item.membership.benefits)
+                                  .slice(0, 4)
+                                  .map(([key, value]: [string, any]) => (
+                                    <div
+                                      key={key}
+                                      className="flex items-start gap-2"
+                                    >
+                                      <Check className="w-4 h-4 text-white/80 flex-shrink-0 mt-0.5" />
+                                      <span className="text-white/90 text-sm">
+                                        {value || key}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+
+                        {/* Queue Information */}
+                        {membershipStatus === "queued" && (
+                          <div className="bg-blue-400/20 backdrop-blur-sm rounded-lg p-4 border border-blue-300/30">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1">
+                                <p className="text-white font-semibold mb-2">
+                                  📋 Queue Position #{item.queuePosition}
+                                </p>
+                                <p className="text-white/80 text-sm">
+                                  This membership will automatically activate on{" "}
+                                  <span className="font-semibold">
+                                    {new Date(item.nextActivationDate).toLocaleDateString()}
+                                  </span>
+                                  , replacing your current subscription.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Renewal Info */}
+                        {membershipStatus === "active" && (
+                          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+                            <p className="text-white/70 text-xs uppercase tracking-wider font-medium mb-2">
+                              ℹ️ Membership Details
+                            </p>
+                            <p className="text-white/90 text-sm">
+                              This membership will automatically end after duration. Renewals available on{" "}
+                              <span className="font-semibold">
+                                {new Date(item.end_date).toLocaleDateString()}
+                              </span>
+                              . You can also renew in advance.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  );
+                } else {
+                  // Product Order Card
+                  const order = item;
+                  return (
+                    <Card key={order.id}>
+                      <CardContent className="pt-6">
+                        <div className="space-y-6">
+                          {/* Order Header */}
+                          <div className="flex items-center justify-between pb-6 border-b">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                Order #{order.order_number}
+                              </h3>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Placed on{" "}
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-gray-900">
+                                ₹{order.total_amount.toFixed(2)}
+                              </p>
+                              <span
+                                className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${getStatusColor(
+                                  order.status
+                                )}`}
+                              >
+                                {order.status.charAt(0).toUpperCase() +
+                                  order.status.slice(1)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Order Progress - Modern Progress Bar */}
+                          {order.status !== "cancelled" && (
+                            <div className="space-y-3 sm:space-y-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <p className="text-sm font-semibold text-gray-900">
+                                  Delivery Status
+                                </p>
+                                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full w-fit">
+                                  {getOrderProgress(order)} of {orderSteps.length} steps
+                                </span>
+                              </div>
+
+                              {/* Progress Bar Container */}
+                              <div className="space-y-2 sm:space-y-3">
+                                {/* Main Progress Bar */}
+                                <div className="relative h-1.5 sm:h-2 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full overflow-hidden shadow-sm">
+                                  {/* Animated Progress Fill */}
+                                  <div
+                                    className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 rounded-full shadow-lg transition-all duration-700 ease-out"
+                                    style={{
+                                      width: `${(getOrderProgress(order) / orderSteps.length) * 100}%`,
+                                    }}
+                                  >
+                                    {/* Shimmer Effect */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse" />
+                                  </div>
+
+                                  {/* Progress Dots */}
+                                  <div className="absolute top-1/2 w-full flex justify-between -translate-y-1/2">
+                                    {orderSteps.map((step, index) => {
+                                      const isCompleted = getOrderProgress(order) > index;
+                                      const isCurrent = getOrderProgress(order) === index + 1;
+
+                                      return (
+                                        <div
+                                          key={step.status}
+                                          className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 transition-all duration-500 ${
+                                            isCompleted || isCurrent
+                                              ? "bg-blue-600 border-blue-700 scale-110 shadow-md"
+                                              : "bg-white border-gray-300"
+                                          } ${isCurrent ? "animate-pulse" : ""}`}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Status Labels - Responsive Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 mt-4 sm:mt-6">
+                                  {orderSteps.map((step, index) => {
+                                    const StepIcon = step.icon;
+                                    const isCompleted = getOrderProgress(order) > index;
+                                    const isCurrent = getOrderProgress(order) === index + 1;
+
+                                    return (
+                                      <div
+                                        key={step.status}
+                                        className={`flex flex-col items-center p-2 sm:p-3 rounded-lg transition-all duration-300 ${
+                                          isCompleted || isCurrent
+                                            ? "bg-blue-50 border-2 border-blue-200 sm:scale-105"
+                                            : "bg-gray-50 border border-gray-200"
+                                        }`}
+                                      >
+                                        <div
+                                          className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 sm:mb-2 transition-all duration-300 ${
+                                            isCompleted || isCurrent
+                                              ? "bg-blue-600 text-white shadow-md"
+                                              : "bg-gray-200 text-gray-600"
+                                          } ${isCurrent ? "animate-bounce" : ""}`}
+                                        >
+                                          <StepIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                                        </div>
+                                        <p className="text-[10px] sm:text-xs font-medium text-center leading-tight">
+                                          <span
+                                            className={
+                                              isCompleted || isCurrent
+                                                ? "text-blue-700"
+                                                : "text-gray-600"
+                                            }
+                                          >
+                                            {step.label}
+                                          </span>
+                                        </p>
+                                        {isCurrent && (
+                                          <span className="text-[8px] sm:text-[10px] text-blue-600 font-semibold mt-0.5 sm:mt-1">
+                                            In Progress
+                                          </span>
+                                        )}
+                                        {isCompleted && !isCurrent && (
+                                          <span className="text-[8px] sm:text-[10px] text-green-600 font-semibold mt-0.5 sm:mt-1">
+                                            ✓ Complete
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Order Items Summary */}
+                          <div className="space-y-3">
+                            <p className="text-sm font-semibold text-gray-900">
+                              Items ({order.order_items?.length || 0})
+                            </p>
+                            <div className="space-y-2">
+                              {order.order_items?.map((orderItem: any) => (
+                                <div
+                                  key={orderItem.id}
+                                  className="flex justify-between text-sm"
+                                >
+                                  <span className="text-gray-600">
+                                    {orderItem.products?.name || "Product"} x{" "}
+                                    {orderItem.quantity}
+                                  </span>
+                                  <span className="font-medium">
+                                    ₹{orderItem.price.toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Payment Status */}
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div>
+                              <p className="text-sm text-gray-600">
+                                Payment Status
+                              </p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {order.payment_status === "completed"
+                                  ? "✓ Paid"
+                                  : "Pending"}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedOrder(order)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+              })}
             </div>
           ) : (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No orders yet
+                  No orders or memberships yet
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Start shopping to place your first order
+                  Start shopping or upgrade your membership
                 </p>
                 <Button onClick={() => navigate("/store")}>
                   Shop Now
@@ -266,23 +581,34 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal - Full Height */}
       {selectedOrder && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
           onClick={() => setSelectedOrder(null)}
         >
-          <Card className="w-full max-w-2xl max-h-96 overflow-y-auto">
-            <CardHeader className="flex items-center justify-between border-b">
-              <CardTitle>Order Details #{selectedOrder.order_number}</CardTitle>
+          <div
+            className="w-full h-full sm:h-[95vh] sm:w-[92%] md:w-[80%] lg:w-[75%] sm:rounded-lg flex flex-col bg-white mx-auto sm:mx-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b p-6 bg-gradient-to-r from-blue-50 to-indigo-50 sticky top-0 z-10">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Order Details #{selectedOrder.order_number}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedOrder.status && `Status: ${selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}`}
+                </p>
+              </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-gray-600 hover:text-gray-900 text-3xl font-light leading-none hover:bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
               >
                 ✕
               </button>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <CardContent className="pt-8 space-y-8 pb-8 max-w-4xl">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-600">Order Date</p>
@@ -301,12 +627,16 @@ export default function Orders() {
               <div>
                 <h3 className="font-semibold mb-3">Items</h3>
                 <div className="space-y-2">
-                  {selectedOrder.order_items?.map((item: any) => (
-                    <div key={item.id} className="flex justify-between text-sm">
+                  {selectedOrder.order_items?.map((orderItem: any) => (
+                    <div
+                      key={orderItem.id}
+                      className="flex justify-between text-sm"
+                    >
                       <span>
-                        {item.products?.name || "Product"} x {item.quantity}
+                        {orderItem.products?.name || "Product"} x{" "}
+                        {orderItem.quantity}
                       </span>
-                      <span>₹{item.price.toFixed(2)}</span>
+                      <span>₹{orderItem.price.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -336,12 +666,17 @@ export default function Orders() {
 
               {selectedOrder.status_comment && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <h3 className="font-semibold mb-2 text-sm text-blue-900">Order Status Update</h3>
-                  <p className="text-sm text-blue-800">{selectedOrder.status_comment}</p>
+                  <h3 className="font-semibold mb-2 text-sm text-blue-900">
+                    Order Status Update
+                  </h3>
+                  <p className="text-sm text-blue-800">
+                    {selectedOrder.status_comment}
+                  </p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </div>
+          </div>
         </div>
       )}
     </Layout>

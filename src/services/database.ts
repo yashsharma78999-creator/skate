@@ -305,6 +305,102 @@ export const userMembershipService = {
     })) as any[];
   },
 
+  async getUserMembershipsWithQueue(userId: string) {
+    // Get all memberships for the user, sorted by start_date
+    const { data, error } = await supabase
+      .from("user_memberships")
+      .select("*, membership:membership_id(*)")
+      .eq("user_id", userId)
+      .order("start_date", { ascending: true });
+
+    if (error) throw error;
+
+    const now = new Date();
+    const memberships = (data || []).map((item: any) => ({
+      ...item,
+      membership: item.membership || null,
+    }));
+
+    // Group memberships by membership_id to handle queues
+    const groupedByMembershipId: Record<number, any[]> = {};
+    memberships.forEach((mem: any) => {
+      const memId = mem.membership_id;
+      if (!groupedByMembershipId[memId]) {
+        groupedByMembershipId[memId] = [];
+      }
+      groupedByMembershipId[memId].push(mem);
+    });
+
+    // Process each membership group and determine active/queued status
+    const processedMemberships = memberships.map((mem: any) => {
+      const sameTypeMembers = groupedByMembershipId[mem.membership_id];
+
+      if (!sameTypeMembers || sameTypeMembers.length === 1) {
+        // Only one membership of this type, use standard logic
+        return {
+          ...mem,
+          status: this.calculateMembershipStatus(mem, now),
+          queuePosition: null,
+          nextActivationDate: null,
+        };
+      }
+
+      // Multiple memberships of the same type - handle queue
+      const activeOne = sameTypeMembers.find((m: any) => {
+        const startDate = new Date(m.start_date);
+        const endDate = new Date(m.end_date);
+        return startDate <= now && endDate > now;
+      });
+
+      if (activeOne && activeOne.id === mem.id) {
+        // This is the active one
+        return {
+          ...mem,
+          status: "active",
+          queuePosition: null,
+          nextActivationDate: null,
+        };
+      }
+
+      // This is queued - find its position
+      const queuedMembers = sameTypeMembers
+        .filter((m: any) => new Date(m.start_date) > now || new Date(m.end_date) <= now)
+        .sort((a: any, b: any) =>
+          new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+        );
+
+      const queuePos = queuedMembers.findIndex((m: any) => m.id === mem.id) + 1;
+      const activationDate = activeOne
+        ? new Date(activeOne.end_date)
+        : new Date(mem.start_date);
+
+      return {
+        ...mem,
+        status: "queued",
+        queuePosition: queuePos,
+        nextActivationDate: activationDate.toISOString(),
+      };
+    });
+
+    return processedMemberships;
+  },
+
+  private calculateMembershipStatus(
+    membership: any,
+    now: Date
+  ): "active" | "expired" | "pending" | "queued" {
+    const startDate = new Date(membership.start_date);
+    const endDate = new Date(membership.end_date);
+
+    if (startDate > now) {
+      return "pending";
+    } else if (endDate > now) {
+      return "active";
+    } else {
+      return "expired";
+    }
+  },
+
   async create(userMembership: Omit<UserMembership, "id" | "created_at" | "updated_at">) {
     const { data, error } = await supabase
       .from("user_memberships")
@@ -331,15 +427,15 @@ export const userMembershipService = {
       .from("user_memberships")
       .select(`
         *,
-        membership:membership_id(*),
-        profile:user_id(id, email, full_name, avatar_url, created_at)
+        memberships:membership_id(*),
+        profiles:user_id(id, email, full_name, avatar_url, created_at)
       `)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data || []).map((item: any) => ({
       ...item,
-      membership: item.membership || null,
-      profile: item.profile || null,
+      memberships: item.memberships || null,
+      profiles: item.profiles || null,
     })) as any[];
   },
 
@@ -349,8 +445,8 @@ export const userMembershipService = {
       .from("user_memberships")
       .select(`
         *,
-        membership:membership_id(*),
-        profile:user_id(id, email, full_name, avatar_url, created_at)
+        memberships:membership_id(*),
+        profiles:user_id(id, email, full_name, avatar_url, created_at)
       `)
       .eq("is_active", true)
       .gte("end_date", now)
@@ -358,8 +454,8 @@ export const userMembershipService = {
     if (error) throw error;
     return (data || []).map((item: any) => ({
       ...item,
-      membership: item.membership || null,
-      profile: item.profile || null,
+      memberships: item.memberships || null,
+      profiles: item.profiles || null,
     })) as any[];
   },
 };

@@ -95,24 +95,55 @@ const processMembershipsForOrder = async (orderId: number, userId: string | null
 
         console.log(`[PAYMENT] ✅ Membership found: ${membership.name}, duration: ${membership.duration_days} days`);
 
-        // Calculate end date
-        const endDate = new Date(now);
+        // Check if user already has an active membership of the same type
+        const { data: existingMemberships, error: fetchError } = await supabase
+          .from("user_memberships")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("membership_id", membershipId)
+          .order("end_date", { ascending: false });
+
+        if (fetchError) {
+          console.warn(`[PAYMENT] ⚠️ Could not fetch existing memberships: ${fetchError.message}`);
+        }
+
+        let startDate = new Date(now);
+        let isActive = true;
+
+        if (existingMemberships && existingMemberships.length > 0) {
+          // Get the most recent membership
+          const lastMembership = existingMemberships[0];
+          const lastEndDate = new Date(lastMembership.end_date);
+
+          // If there's an active membership, queue this one to start after it ends
+          if (lastEndDate > now) {
+            startDate = new Date(lastEndDate);
+            isActive = false; // Mark as inactive - it will activate automatically when the previous one ends
+            console.log(`[PAYMENT] ⚠️ Membership ${membershipId} will be queued. Previous membership ends: ${lastEndDate.toISOString()}`);
+          } else {
+            // Previous membership has expired, this one can start now
+            console.log(`[PAYMENT] ℹ️ Previous membership has expired, activating new one immediately`);
+          }
+        }
+
+        // Calculate end date based on the start date
+        const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + membership.duration_days);
 
         console.log(`[PAYMENT] Creating user_membership:
           - user_id: ${userId}
           - membership_id: ${membershipId}
-          - start_date: ${now.toISOString()}
+          - start_date: ${startDate.toISOString()}
           - end_date: ${endDate.toISOString()}
-          - is_active: true`);
+          - is_active: ${isActive}`);
 
         // Create user membership
         const userMem = await userMembershipService.create({
           user_id: userId,
           membership_id: membershipId,
-          start_date: now.toISOString(),
+          start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
-          is_active: true,
+          is_active: isActive,
         });
 
         console.log(
@@ -413,6 +444,69 @@ export const paymentService = {
         status: "error",
         message: "Failed to simulate payment",
       };
+    }
+  },
+
+  // Helper function to activate queued memberships when current one expires
+  async activateQueuedMemberships(userId: string) {
+    try {
+      console.log(`[PAYMENT] Starting activateQueuedMemberships for user ${userId}`);
+
+      // Get all memberships for user
+      const { data: allMemberships, error } = await supabase
+        .from("user_memberships")
+        .select("*")
+        .eq("user_id", userId)
+        .order("start_date", { ascending: true });
+
+      if (error) {
+        console.error(`[PAYMENT] Error fetching memberships:`, error);
+        return;
+      }
+
+      const now = new Date();
+
+      // Group by membership_id
+      const groupedByMembershipId: Record<number, any[]> = {};
+      allMemberships?.forEach((mem: any) => {
+        if (!groupedByMembershipId[mem.membership_id]) {
+          groupedByMembershipId[mem.membership_id] = [];
+        }
+        groupedByMembershipId[mem.membership_id].push(mem);
+      });
+
+      // Check each group and activate queued memberships
+      for (const membershipId in groupedByMembershipId) {
+        const memberships = groupedByMembershipId[membershipId];
+
+        // Find the active one
+        const activeOne = memberships.find((m: any) => {
+          const startDate = new Date(m.start_date);
+          const endDate = new Date(m.end_date);
+          return startDate <= now && endDate > now;
+        });
+
+        if (!activeOne) {
+          // No active membership, find the first queued one and activate it
+          const firstQueued = memberships
+            .filter((m: any) => new Date(m.start_date) <= now)
+            .sort((a: any, b: any) =>
+              new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+            )[0];
+
+          if (firstQueued) {
+            console.log(`[PAYMENT] Activating queued membership ${firstQueued.id}`);
+            await supabase
+              .from("user_memberships")
+              .update({ is_active: true })
+              .eq("id", firstQueued.id);
+          }
+        }
+      }
+
+      console.log(`[PAYMENT] ✅ Completed activateQueuedMemberships for user ${userId}`);
+    } catch (error) {
+      console.error(`[PAYMENT] Error in activateQueuedMemberships:`, error);
     }
   },
 };

@@ -381,50 +381,194 @@ export default function AdminSubscribers() {
           </CardContent>
         </Card>
 
-        {/* Detailed Info Card */}
-        {filteredSubscribers.length > 0 && (
+        {/* Quick Stats Section */}
+        {subscribers.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Quick Stats</CardTitle>
+              <CardTitle>Quick Stats & Insights</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredSubscribers.slice(0, 3).map((subscriber) => (
-                  <div
-                    key={subscriber.id}
-                    className="p-4 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {subscriber.profiles?.full_name}
-                        </h3>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {subscriber.memberships?.name}
-                        </p>
-                      </div>
-                      {isSubscriptionActive(subscriber) ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <AlertCircle className="w-5 h-5 text-red-600" />
-                      )}
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <p className="text-gray-600">
-                        <span className="font-medium">Member since:</span>{" "}
-                        {new Date(subscriber.start_date).toLocaleDateString(
-                          "en-IN"
-                        )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Membership Distribution */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase">
+                        Top Membership
                       </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Expires:</span>{" "}
-                        {new Date(subscriber.end_date).toLocaleDateString(
-                          "en-IN"
-                        )}
-                      </p>
+                      <h3 className="font-bold text-gray-900 text-lg mt-1">
+                        {(() => {
+                          const membershipCounts: Record<string, number> = {};
+                          subscribers.forEach((sub) => {
+                            const name = sub.memberships?.name || "Unknown";
+                            membershipCounts[name] =
+                              (membershipCounts[name] || 0) + 1;
+                          });
+                          const topMembership = Object.entries(membershipCounts).sort(
+                            ([, a], [, b]) => b - a
+                          )[0];
+                          return topMembership ? topMembership[0] : "N/A";
+                        })()}
+                      </h3>
                     </div>
                   </div>
-                ))}
+                  <p className="text-sm text-gray-600">
+                    {(() => {
+                      const membershipCounts: Record<string, number> = {};
+                      subscribers.forEach((sub) => {
+                        const name = sub.memberships?.name || "Unknown";
+                        membershipCounts[name] =
+                          (membershipCounts[name] || 0) + 1;
+                      });
+                      const topMembership = Object.entries(membershipCounts).sort(
+                        ([, a], [, b]) => b - a
+                      )[0];
+                      return topMembership
+                        ? `${topMembership[1]} subscriber${
+                            topMembership[1] !== 1 ? "s" : ""
+                          }`
+                        : "No data";
+                    })()}
+                  </p>
+                </div>
+
+                {/* Average Subscription Duration */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase">
+                        Avg Duration
+                      </p>
+                      <h3 className="font-bold text-gray-900 text-lg mt-1">
+                        {(() => {
+                          if (subscribers.length === 0) return "N/A";
+                          const totalDays = subscribers.reduce((sum, sub) => {
+                            const start = new Date(sub.start_date);
+                            const end = new Date(sub.end_date);
+                            const diff = end.getTime() - start.getTime();
+                            return sum + Math.ceil(diff / (1000 * 60 * 60 * 24));
+                          }, 0);
+                          return `${Math.round(totalDays / subscribers.length)} days`;
+                        })()}
+                      </h3>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Per subscription period
+                  </p>
+                </div>
+
+                {/* Upcoming Renewals (Next 30 Days) */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase">
+                        Expiring Soon
+                      </p>
+                      <h3 className="font-bold text-gray-900 text-lg mt-1">
+                        {(() => {
+                          const now = new Date();
+                          const thirtyDaysLater = new Date(
+                            now.getTime() + 30 * 24 * 60 * 60 * 1000
+                          );
+                          return subscribers.filter((sub) => {
+                            const endDate = new Date(sub.end_date);
+                            return (
+                              endDate > now &&
+                              endDate <= thirtyDaysLater &&
+                              sub.is_active
+                            );
+                          }).length;
+                        })()}
+                      </h3>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    In the next 30 days
+                  </p>
+                </div>
+
+                {/* Revenue Potential */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 uppercase">
+                        Total MRR
+                      </p>
+                      <h3 className="font-bold text-gray-900 text-lg mt-1">
+                        ₹
+                        {(() => {
+                          const totalRevenue = subscribers
+                            .filter((sub) => isSubscriptionActive(sub))
+                            .reduce((sum, sub) => {
+                              return (
+                                sum + (sub.memberships?.price || 0)
+                              );
+                            }, 0);
+                          return totalRevenue.toLocaleString("en-IN");
+                        })()}
+                      </h3>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Monthly Recurring Revenue
+                  </p>
+                </div>
+              </div>
+
+              {/* Membership Breakdown */}
+              <div className="mt-6 p-4 rounded-lg bg-gray-50 border border-gray-200">
+                <h4 className="font-semibold text-gray-900 mb-4">
+                  Membership Distribution
+                </h4>
+                <div className="space-y-3">
+                  {(() => {
+                    const membershipStats: Record<
+                      string,
+                      { count: number; active: number; price: number }
+                    > = {};
+                    subscribers.forEach((sub) => {
+                      const name = sub.memberships?.name || "Unknown";
+                      if (!membershipStats[name]) {
+                        membershipStats[name] = {
+                          count: 0,
+                          active: 0,
+                          price: sub.memberships?.price || 0,
+                        };
+                      }
+                      membershipStats[name].count++;
+                      if (isSubscriptionActive(sub)) {
+                        membershipStats[name].active++;
+                      }
+                    });
+
+                    return Object.entries(membershipStats).map(
+                      ([name, stats]) => {
+                        const percentage = Math.round(
+                          (stats.count / subscribers.length) * 100
+                        );
+                        return (
+                          <div key={name}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium text-gray-700">
+                                {name}
+                              </span>
+                              <span className="text-xs text-gray-600">
+                                {stats.active}/{stats.count} active (₹{stats.price})
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                    );
+                  })()}
+                </div>
               </div>
             </CardContent>
           </Card>
