@@ -189,20 +189,60 @@ export default function Orders() {
                 if (item.type === "membership") {
                   // Membership Card
                   const colorClass = getColorFromMembership(item.membership?.color);
+                  const membershipStatus = item.status || (item.is_active ? "active" : "expired");
+
+                  const getStatusDisplay = () => {
+                    switch (membershipStatus) {
+                      case "active":
+                        return { text: "✓ Active", bgColor: "bg-green-400/30" };
+                      case "queued":
+                        return {
+                          text: `Queued #${item.queuePosition}`,
+                          bgColor: "bg-blue-400/30"
+                        };
+                      case "pending":
+                        return {
+                          text: "Upcoming",
+                          bgColor: "bg-amber-400/30"
+                        };
+                      case "expired":
+                        return {
+                          text: "Expired",
+                          bgColor: "bg-red-400/30"
+                        };
+                      default:
+                        return {
+                          text: "Active",
+                          bgColor: "bg-green-400/30"
+                        };
+                    }
+                  };
+
+                  const statusDisplay = getStatusDisplay();
+
                   return (
                     <div
                       key={`membership-${item.id}`}
-                      className="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                      className={`group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${
+                        membershipStatus === "queued" ? "opacity-85" : ""
+                      }`}
                     >
                       <div
                         className={`absolute inset-0 bg-gradient-to-br ${colorClass} opacity-95`}
                       />
 
+                      {/* Queued overlay indicator */}
+                      {membershipStatus === "queued" && (
+                        <div className="absolute top-0 left-0 right-0 bg-blue-600/50 text-white text-xs font-semibold py-2 px-4 text-center backdrop-blur-sm">
+                          Queued for Renewal - Activates {new Date(item.nextActivationDate).toLocaleDateString()}
+                        </div>
+                      )}
+
                       {/* Background decorations */}
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform duration-300" />
                       <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16" />
 
-                      <div className="relative p-6 sm:p-8">
+                      <div className={`relative p-6 sm:p-8 ${membershipStatus === "queued" ? "pt-16" : ""}`}>
                         {/* Header with Icon */}
                         <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
                           <div className="flex items-start gap-4">
@@ -223,13 +263,9 @@ export default function Orders() {
                               ₹{item.membership?.price || 0}
                             </div>
                             <span
-                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${
-                                item.is_active
-                                  ? "bg-green-400/30 text-white"
-                                  : "bg-red-400/30 text-white"
-                              } backdrop-blur-sm border border-white/20`}
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${statusDisplay.bgColor} text-white backdrop-blur-sm border border-white/20`}
                             >
-                              {item.is_active ? "✓ Active" : "Expired"}
+                              {statusDisplay.text}
                             </span>
                           </div>
                         </div>
